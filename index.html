@@ -41,14 +41,16 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 .tiles { flex: 1; overflow-y: auto; display: grid; gap: 10px; align-content: start; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 2px 2px 6px; }
 @media (min-width: 560px) { .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .t { aspect-ratio: 1; max-width: 100%; min-width: 0; border: 2px solid var(--edge); box-shadow: 0 3px 0 var(--edge); padding: 0; border-radius: 16px; background: var(--tile); position: relative; display: flex; flex-direction: column; line-height: 1; font-variant-numeric: tabular-nums; }
-.t .n { flex: 1; display: flex; align-items: center; justify-content: center; font-size: clamp(44px, 14vw, 64px); font-weight: 800; letter-spacing: -.02em; }
+.t .n { flex: 1; display: flex; align-items: center; justify-content: center; font-size: clamp(44px, 14vw, 64px); font-weight: 800; letter-spacing: -.02em; min-width: 0; }
+.t .n.d3 { font-size: clamp(36px, 11vw, 52px); letter-spacing: -.04em; }
+.t .n.d4 { font-size: clamp(28px, 8.5vw, 40px); letter-spacing: -.04em; }
 .coupes .t .n { font-size: clamp(52px, 17vw, 76px); }
 .coupes .t .n.long { font-size: clamp(24px, 7.5vw, 34px); }
 .t .s { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; font-weight: 700; padding: 6px 8px; text-align: left; background: rgba(0,0,0,.09); }
 .t .s.blank { background: none; }
 /* Round the strips, not the tile: clipping the tile lets a scrolling grid squash its rows. */
-.t .s:first-child { border-radius: 13px 13px 0 0; }
-.t .s:last-child { border-radius: 0 0 13px 13px; }
+.t .s:first-child { border-radius: 14px 14px 0 0; }
+.t .s:last-child { border-radius: 0 0 14px 14px; }
 .t .s.bee { background: var(--ink); color: var(--amber); font-weight: 800; }
 .t .s.rp { background: var(--danger); color: var(--on-solid); }
 .t .s em { font-style: normal; font-weight: 500; opacity: .75; }
@@ -65,14 +67,32 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 .site { font-size: 18px; padding: 12px 14px; }
 .ctitle { flex: 1; min-width: 0; font: 800 28px var(--sans); }
 .cnt { font: 700 16px var(--sans); color: var(--muted); }
-.t.hold { background: var(--amber); color: var(--on-amber); }
-.t.fix { box-shadow: inset 0 0 0 3px var(--danger); }
+.t.hold { background: var(--amber); color: var(--on-amber); border-color: var(--amber); }
+.t.fix { border-color: var(--danger); box-shadow: 0 3px 0 var(--danger); }
 .t.done .s, .t.hold .s { background: rgba(0,0,0,.16); }
 .t.done .s.blank, .t.hold .s.blank { background: none; }
 .t .s.bee, .t.done .s.bee, .t.hold .s.bee { background: var(--ink); color: var(--amber); }
+.t.done .s.here-s, .t.part .s.here-s { background: var(--amber); color: var(--on-amber); }
 .foot { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
 .foot span { flex: 1; }
-.foot .cl { flex: 0 0 auto; font: 800 38px var(--sans); color: var(--ink); padding: 0 6px; line-height: 1; }
+/* Bottom panel: queue (reference), totals (summary), finish (finalise). One card, one type scale. */
+.panel { background: var(--card); border: 2px solid var(--edge); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+.panel .prow { display: flex; align-items: center; gap: 12px; }
+.panel .lab { font: 700 12px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.panel .qrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid var(--edge); }
+.panel .qrow button { border: 0; background: var(--amber); color: var(--on-amber); font: 800 18px var(--sans); border-radius: 10px; padding: 8px 12px; min-width: 48px; }
+.panel .letter { display: flex; flex-direction: column; align-items: center; min-width: 52px; }
+.panel .letter b { font: 800 40px/1 var(--sans); color: var(--ink); }
+.panel .stat { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.panel .stat b { font: 800 20px var(--sans); color: var(--ink); }
+.panel .stat span { font: 600 13px var(--sans); color: var(--muted); }
+.panel .btn.go { padding: 16px 18px; font-size: 17px; flex: 0 0 auto; }
+/* In-page reminder sheet (the viewer blocks confirm()) */
+.sheet { position: fixed; inset: 0; background: rgba(20, 20, 15, .55); display: flex; align-items: flex-end; justify-content: center; z-index: 20; padding: 12px max(12px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+.sheet > div { background: var(--panel); border-radius: 20px; padding: 18px; width: 100%; max-width: 496px; display: flex; flex-direction: column; gap: 10px; }
+.sheet h2 { margin: 0; font: 800 24px var(--sans); }
+.sheet p { margin: 0 0 6px; font-size: 16px; color: var(--muted); }
+.sheet .btn { padding: 18px; font-size: 18px; }
 .btn { border: 0; border-radius: 12px; padding: 12px 16px; font: 700 16px var(--sans); background: var(--card); }
 .btn.go { background: var(--green); color: var(--on-solid); }
 .key { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); }
@@ -103,7 +123,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 .list { margin: 0; padding: 0; list-style: none; font-size: 15px; }
 .list li { padding: 7px 0; border-bottom: 1px solid var(--line); }
 .list li.red { color: var(--danger); font-weight: 600; }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--panel); border-radius: 14px; padding: 12px 14px; display: flex; gap: 14px; align-items: center; font-size: 16px; font-weight: 600; max-width: calc(100% - 32px); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(10px + env(safe-area-inset-top, 0px)); z-index: 30; background: var(--ink); color: var(--panel); border-radius: 14px; padding: 12px 14px; display: flex; gap: 14px; align-items: center; font-size: 16px; font-weight: 600; max-width: calc(100% - 32px); }
 .toast button { border: 0; background: none; color: var(--amber); font: 800 16px var(--sans); }
 .who { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
 .who input { font: 600 18px var(--sans); padding: 10px 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--ink); }
@@ -118,6 +138,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 @media (prefers-reduced-motion: reduce) { .a:active, .t:active, .btn:active { transform: none; } }
 </style>
 <div id="app"></div>
+<div class="sheet" id="sheet" hidden></div>
 <div class="toast" id="toast" hidden><span id="toastMsg"></span><button id="undo">Undo</button></div>
 <script>
 // Box numbers and coupes are fine to publish (Nick, 31 Oct 2026). Box LOCATIONS never go in this file.
@@ -157,7 +178,7 @@ const BREED = {
   Unknown: [["Non-breeding", C.spruce], ["Unknown", C.grey]]
 };
 
-const S = { site: "roudsea", coupe: "K", rec: {}, repair: {}, started: null, date: null, surveyors: "", exported: null };
+const S = { site: "roudsea", coupe: "K", rec: {}, repair: {}, finished: {}, started: null, date: null, surveyors: "", exported: null };
 let box = null, mice = [], cur = 0, undoFn = null, toastT = null, inCard = false;
 const app = document.getElementById("app");
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -177,7 +198,7 @@ function load() {
 }
 function wipe() {
   try { localStorage.removeItem(KEY); } catch (e) {}
-  Object.assign(S, { rec: {}, repair: {}, started: null, date: null, surveyors: "", exported: null });
+  Object.assign(S, { rec: {}, repair: {}, finished: {}, started: null, date: null, surveyors: "", exported: null });
   box = null; mice = []; cur = 0; inCard = false;
 }
 const hasData = () => Object.keys(S.rec).length > 0 || Object.values(S.repair).some(Boolean);
@@ -312,17 +333,21 @@ function coupes() {
     h += `<div class="tiles coupes">`;
     for (const k of Object.keys(list)) {
       const bx = list[k], done = bx.filter(l => S.rec[l] && S.rec[l].state !== "wait").length;
-      const wait = bx.some(l => S.rec[l] && S.rec[l].state === "wait"), isSug = sug && sug.id === k;
-      const cls = (done && done === bx.length ? " done" : done ? " part" : "") + (isSug ? " sug" : "");
+      const wait = bx.filter(l => S.rec[l] && S.rec[l].state === "wait").length, isSug = sug && sug.id === k;
+      const fin = S.finished[k] || (done && done === bx.length);
+      const cls = (fin ? " done" : done ? " part" : "") + (isSug ? " sug" : "");
       h += `<button class="t${cls}" data-c="${esc(k)}" aria-label="Coupe ${esc(k)}">` +
-        `<span class="s${isSug ? " here-s" : " blank"}">${isSug ? "📍 HERE" : "&nbsp;"}</span>` +
+        `<span class="s${isSug || wait ? " here-s" : " blank"}">${isSug ? "📍 HERE" : wait ? `${wait} queued` : "&nbsp;"}</span>` +
         `<span class="n${k.length > 2 ? " long" : ""}">${esc(k)}</span>` +
-        `<span class="s">${done}/${bx.length} done${wait ? " · queue" : ""}</span></button>`;
+        `<span class="s">${fin && S.finished[k] ? "✓ " : ""}${done}/${bx.length}</span></button>`;
     }
     h += `</div>`;
   }
   const n = Object.keys(S.rec).length;
-  h += `<div class="foot"><span>${n} box${n === 1 ? "" : "es"} recorded today</span><button class="btn go" id="finish">Finish day</button></div>`;
+  const nf = Object.keys(S.finished).filter(k => S.finished[k] && list && list[k]).length;
+  h += `<div class="panel"><div class="prow"><div class="stat"><b>${n} box${n === 1 ? "" : "es"} today</b>` +
+    `<span>${nf ? `${nf} coupe${nf === 1 ? "" : "s"} finished` : "No coupes finished yet"}</span></div>` +
+    `<button class="btn go" id="finish">Finish day</button></div></div>`;
   app.innerHTML = h;
   document.getElementById("site").onclick = () => {
     const i = RESERVES.findIndex(r => r.id === S.site);
@@ -433,9 +458,8 @@ function grid() {
   if (!list) return coupes();
   const waiting = list.filter(l => S.rec[l] && S.rec[l].state === "wait");
   const done = list.filter(l => S.rec[l] && S.rec[l].state !== "wait").length;
-  let h = "";
-  if (waiting.length) h += `<div class="wait">Queue:` + waiting.map(l => `<button data-b="${esc(l)}">${esc(short(l))}</button>`).join("") + `</div>`;
-  h += `<div class="tiles">`;
+  const repairs = list.filter(l => S.repair[l]).length;
+  let h = `<div class="tiles">`;
   for (const l of list) {
     const r = S.rec[l], lt = LAST[l];
     const cls = (r ? (r.state === "wait" ? "hold" : "done") : "") + (S.repair[l] ? " fix" : "");
@@ -444,11 +468,17 @@ function grid() {
     const bot = S.repair[l] ? `<span class="s rp">⚒ ${esc(repLabel(S.repair[l]))}</span>`
       : today ? `<span class="s">${esc(today)}</span>` : `<span class="s blank">&nbsp;</span>`;
     h += `<button class="t ${cls}${/[a-e]$/.test(l) ? " sfx" : ""}" data-b="${esc(l)}" aria-label="Box ${esc(l)}">` +
-      top + `<span class="n">${esc(short(l))}</span>` + bot + `</button>`;
+      top + `<span class="n${short(l).length >= 4 ? " d4" : short(l).length === 3 ? " d3" : ""}">${esc(short(l))}</span>` + bot + `</button>`;
   }
   h += `</div>`;
-  h += `<div class="foot"><span>${done}/${list.length} done</span><span class="cl" aria-label="Coupe ${esc(S.coupe)}">${esc(S.coupe)}</span>` +
-    `<button class="btn go" id="finish">Finish coupe</button></div>`;
+  const left = list.length - done - waiting.length;
+  const notes = [waiting.length ? `${waiting.length} queued` : "", repairs ? `${repairs} repair${repairs === 1 ? "" : "s"}` : "",
+    left ? `${left} to do` : ""].filter(Boolean).join(" · ") || "all marked";
+  h += `<div class="panel">` +
+    (waiting.length ? `<div class="qrow"><span class="lab">Queue</span>` + waiting.map(l => `<button data-b="${esc(l)}">${esc(short(l))}</button>`).join("") + `</div>` : "") +
+    `<div class="prow"><div class="letter"><b>${esc(S.coupe)}</b><span class="lab">Coupe</span></div>` +
+    `<div class="stat"><b>${done} of ${list.length} done</b><span>${notes}</span></div>` +
+    `<button class="btn go" id="finish">Finish coupe</button></div></div>`;
   app.innerHTML = h;
   // Keep every strip on one line: step the text down until it fits, ellipsis as a last resort.
   const fit = s => { s.style.fontSize = ""; for (let f = 14; f > 11 && s.scrollWidth > s.clientWidth; f--) s.style.fontSize = (f - 1) + "px"; };
@@ -461,10 +491,33 @@ function grid() {
     box = b.dataset.b; const r = S.rec[box];
     r && r.state === "wait" ? inside() : call();
   });
-  document.getElementById("finish").onclick = () => {
-    const q = waiting.length;
-    coupes();
-    if (q) toast(`Coupe ${S.coupe}: ${q} box${q === 1 ? "" : "es"} still in the queue`);
+  document.getElementById("finish").onclick = () => finishCoupe(list, waiting);
+}
+
+// Finish coupe. Boxes nobody marked get a reminder; with positive recording they count as empty.
+function finishCoupe(list, waiting) {
+  const unmarked = list.filter(l => !S.rec[l]);
+  const close = () => { const sh = document.getElementById("sheet"); sh.hidden = true; sh.innerHTML = ""; };
+  const done = msg => {
+    S.finished[S.coupe] = true; S.exported = null; save(); close(); coupes();
+    toast(msg || `Coupe ${S.coupe} finished`);
+  };
+  if (!unmarked.length) return done(waiting.length ? `Coupe ${S.coupe} finished, ${waiting.length} still queued` : null);
+  const sh = document.getElementById("sheet");
+  const qtext = waiting.length ? ` ${waiting.length} queued box${waiting.length === 1 ? " stays" : "es stay"} queued.` : "";
+  sh.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="sh-t">
+    <h2 id="sh-t">${unmarked.length} box${unmarked.length === 1 ? "" : "es"} not marked</h2>
+    <p>Positive recording: anything you didn't mark was empty.${qtext}</p>
+    <button class="btn go" id="sh-empty">Mark ${unmarked.length} empty and finish</button>
+    <button class="btn" id="sh-back">Keep checking</button></div>`;
+  sh.hidden = false;
+  document.getElementById("sh-back").onclick = close;
+  document.getElementById("sh-empty").onclick = () => {
+    const t = now();
+    if (!S.started) S.started = t;
+    if (!S.date) S.date = today();
+    unmarked.forEach(l => { S.rec[l] = { state: "clear", bulk: true, time: t }; });
+    done(`Coupe ${S.coupe} finished, ${unmarked.length} marked empty`);
   };
 }
 
@@ -632,7 +685,8 @@ function rows(end) {
       box_condition: S.repair[l] ? "repair: " + repLabel(S.repair[l]).toLowerCase() : "fine" };
     if (!r) out.push({ ...base, notes: "repair noted, box not recorded" });
     else if (r.state === "wait") out.push({ ...base, occupied: "queued", notes: "queued, not checked" });
-    else if (r.state === "clear") out.push({ ...base, occupied: "no", dm_nest: 0, dm_count: 0 });
+    else if (r.state === "clear") out.push({ ...base, occupied: "no", dm_nest: 0, dm_count: 0,
+      notes: r.bulk ? "not marked, recorded empty at finish (positive recording)" : "" });
     else if (r.state === "other") out.push({ ...base, occupied: "yes", contents: r.what, dm_nest: r.what === "Dormouse nest" ? 1 : 0, dm_count: 0 });
     else r.mice.forEach((m, i) => out.push({ ...base, occupied: "yes", contents: "Dormouse", dm_nest: 1, dm_count: r.mice.length,
       dormouse_no: i + 1, sex: CODE.Sex[m.Sex] || "", weight_g: (m.Weight || "").replace(" g", ""), status: CODE.Status[m.Status] || "",
@@ -695,7 +749,7 @@ function start() {
   useBoxes();
   const d = d0;
   if (d && (Object.keys(d.rec || {}).length || Object.values(d.repair || {}).some(Boolean))) {
-    Object.assign(S, { site: d.site || S.site, coupe: BOXES[d.coupe] ? d.coupe : S.coupe, rec: d.rec || {}, repair: d.repair || {}, started: d.started || null,
+    Object.assign(S, { site: d.site || S.site, coupe: BOXES[d.coupe] ? d.coupe : S.coupe, rec: d.rec || {}, repair: d.repair || {}, finished: d.finished || {}, started: d.started || null,
       date: d.date || null, surveyors: d.surveyors || "", exported: d.exported || null });
     if (S.date && S.date !== today()) {
       if (S.exported) { wipe(); coupes(); return; }
