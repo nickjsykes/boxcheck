@@ -72,6 +72,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 .t .s.bee, .t.done .s.bee, .t.hold .s.bee { background: var(--ink); color: var(--amber); }
 .foot { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
 .foot span { flex: 1; }
+.foot .cl { flex: 0 0 auto; font: 800 38px var(--sans); color: var(--ink); padding: 0 6px; line-height: 1; }
 .btn { border: 0; border-radius: 12px; padding: 12px 16px; font: 700 16px var(--sans); background: var(--card); }
 .btn.go { background: var(--green); color: var(--on-solid); }
 .key { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); }
@@ -316,7 +317,7 @@ function coupes() {
       h += `<button class="t${cls}" data-c="${esc(k)}" aria-label="Coupe ${esc(k)}">` +
         `<span class="s${isSug ? " here-s" : " blank"}">${isSug ? "📍 HERE" : "&nbsp;"}</span>` +
         `<span class="n${k.length > 2 ? " long" : ""}">${esc(k)}</span>` +
-        `<span class="s">${done}/${bx.length} done${wait ? " · wait" : ""}</span></button>`;
+        `<span class="s">${done}/${bx.length} done${wait ? " · queue" : ""}</span></button>`;
     }
     h += `</div>`;
   }
@@ -432,22 +433,22 @@ function grid() {
   if (!list) return coupes();
   const waiting = list.filter(l => S.rec[l] && S.rec[l].state === "wait");
   const done = list.filter(l => S.rec[l] && S.rec[l].state !== "wait").length;
-  let h = `<div class="bar"><button class="btn" id="tocoupes">◀ Coupes</button><div class="ctitle">Coupe ${esc(S.coupe)}</div>` +
-    `<span class="cnt">${done}/${list.length}</span></div>`;
-  if (waiting.length) h += `<div class="wait">Waiting for you:` + waiting.map(l => `<button data-b="${esc(l)}">${esc(short(l))}</button>`).join("") + `</div>`;
+  let h = "";
+  if (waiting.length) h += `<div class="wait">Queue:` + waiting.map(l => `<button data-b="${esc(l)}">${esc(short(l))}</button>`).join("") + `</div>`;
   h += `<div class="tiles">`;
   for (const l of list) {
     const r = S.rec[l], lt = LAST[l];
     const cls = (r ? (r.state === "wait" ? "hold" : "done") : "") + (S.repair[l] ? " fix" : "");
-    const today = !r ? "" : r.state === "wait" ? "Waiting" : "✓ " + (r.state === "clear" ? "Clear" : r.state === "dorm" ? `${r.mice.length} dorm` : SHORT[r.what] || r.what);
+    const today = !r ? "" : r.state === "wait" ? "Queued" : "✓ " + (r.state === "clear" ? "Empty" : r.state === "dorm" ? `${r.mice.length} dorm` : SHORT[r.what] || r.what);
     const top = lt ? `<span class="s${lt.bees ? " bee" : ""}">${lt.bees ? "⚠ " : "<em>Last</em> "}${esc(lt.tag)}</span>` : `<span class="s blank">&nbsp;</span>`;
-    const bot = S.repair[l] ? `<span class="s rp">⚒ ${esc(today.replace("✓ ", "") || "Repair")}</span>`
+    const bot = S.repair[l] ? `<span class="s rp">⚒ ${esc(repLabel(S.repair[l]))}</span>`
       : today ? `<span class="s">${esc(today)}</span>` : `<span class="s blank">&nbsp;</span>`;
     h += `<button class="t ${cls}${/[a-e]$/.test(l) ? " sfx" : ""}" data-b="${esc(l)}" aria-label="Box ${esc(l)}">` +
       top + `<span class="n">${esc(short(l))}</span>` + bot + `</button>`;
   }
-  h += `</div><div class="key"><span><i style="background:var(--tile)"></i>To do</span><span><i style="background:var(--amber)"></i>Waiting</span><span><i style="background:var(--green)"></i>Done</span><span><i style="box-shadow:inset 0 0 0 2px var(--danger)"></i>Needs repair</span><span>Top strip = last time · bottom strip = today · underlined = an "a" box</span></div>`;
-  h += `<div class="foot"><span>${done} of ${list.length} done</span><button class="btn go" id="finish">Finish day</button></div>`;
+  h += `</div>`;
+  h += `<div class="foot"><span>${done}/${list.length} done</span><span class="cl" aria-label="Coupe ${esc(S.coupe)}">${esc(S.coupe)}</span>` +
+    `<button class="btn go" id="finish">Finish coupe</button></div>`;
   app.innerHTML = h;
   // Keep every strip on one line: step the text down until it fits, ellipsis as a last resort.
   const fit = s => { s.style.fontSize = ""; for (let f = 14; f > 11 && s.scrollWidth > s.clientWidth; f--) s.style.fontSize = (f - 1) + "px"; };
@@ -456,34 +457,48 @@ function grid() {
   // If any "Last" label won't fit, drop it on every tile in this coupe so they all read the same way.
   if (strips.some(s => s.querySelector("em") && s.scrollWidth > s.clientWidth))
     strips.forEach(s => { const em = s.querySelector("em"); if (em) { em.remove(); fit(s); } });
-  document.getElementById("tocoupes").onclick = coupes;
   app.querySelectorAll("[data-b]").forEach(b => b.onclick = () => {
     box = b.dataset.b; const r = S.rec[box];
     r && r.state === "wait" ? inside() : call();
   });
-  document.getElementById("finish").onclick = summary;
+  document.getElementById("finish").onclick = () => {
+    const q = waiting.length;
+    coupes();
+    if (q) toast(`Coupe ${S.coupe}: ${q} box${q === 1 ? "" : "es"} still in the queue`);
+  };
 }
 
+const REPAIRS = [["Lid", "var(--danger)"], ["Hinge or catch", "var(--ochre)"], ["Fixing or wire", "var(--slate)"],
+  ["Hole or damage", "var(--dorm)"], ["Fallen or loose", "var(--green)"], ["Missing", "var(--danger)"], ["Other", "var(--grey)"]];
+const repLabel = v => v === true ? "Repair" : v;
+let screen = null;            // redraws the current box screen when the repair menu closes
+function repairMenu() {
+  const back = screen || grid;
+  const set = v => () => {
+    if (v) S.repair[box] = v; else delete S.repair[box];
+    if (!S.date) S.date = today();
+    S.exported = null; save();
+    toast(v ? `${short(box)}: repair, ${v.toLowerCase()}` : `${short(box)}: no repair`);
+    back();
+  };
+  const opts = REPAIRS.map(([t, c]) => [t, c, set(t)]);
+  if (S.repair[box]) opts.push(["No repair", "var(--grey)", set(null)]);
+  ask("What needs fixing?", opts, back, true);
+}
 function head(backLabel) {
   const lt = LAST[box];
   return `<div class="head"><h1>Box ${esc(short(box))}</h1>` +
-    `<button class="rep${S.repair[box] ? " on" : ""}" id="rep">${S.repair[box] ? "Repair noted" : "Needs repair"}</button>` +
+    `<button class="rep${S.repair[box] ? " on" : ""}" id="rep">${S.repair[box] ? "⚒ " + esc(repLabel(S.repair[box])) : "Needs repair"}</button>` +
     `<button class="btn" id="back">${backLabel || "Back"}</button></div>` +
     (lt ? `<div class="last">Last time: ${esc(lt.text)}<em>${esc(lt.when)} check · example</em></div>` : "");
 }
 function wireHead(back) {
-  document.getElementById("rep").onclick = e => {
-    S.repair[box] = !S.repair[box];
-    if (!S.date) S.date = today();
-    S.exported = null;
-    save();
-    e.target.classList.toggle("on", S.repair[box]);
-    e.target.textContent = S.repair[box] ? "Repair noted" : "Needs repair";
-  };
+  document.getElementById("rep").onclick = repairMenu;
   document.getElementById("back").onclick = back || grid;
 }
-function ask(q, opts, back) {
-  app.innerHTML = head() + `<div class="q">${q}</div><div class="answers">` +
+function ask(q, opts, back, keepScreen) {
+  if (!keepScreen) screen = () => ask(q, opts, back);
+  app.innerHTML = head() + (q ? `<div class="q">${q}</div>` : "") + `<div class="answers">` +
     opts.map((o, i) => `<button class="a" style="background:${o[1]}" data-i="${i}">${o[0]}</button>`).join("") + `</div>`;
   wireHead(back);
   app.querySelectorAll(".a").forEach(b => b.onclick = () => opts[+b.dataset.i][2]());
@@ -491,10 +506,10 @@ function ask(q, opts, back) {
 
 function call() {
   const l = short(box);
-  ask("Occupied?", [
-    ["No — clear", C.grey, () => setRec(box, { state: "clear" }, `${l} clear`)],
-    ["Blocked, wait", "var(--amber)", () => setRec(box, { state: "wait" }, `${l} waiting for you`)],
-    ["Yes — check now", C.spruce, inside]
+  ask("", [
+    ["Empty", C.grey, () => setRec(box, { state: "clear" }, `${l} empty`)],
+    ["Queue", "var(--amber)", () => setRec(box, { state: "wait" }, `${l} queued, come back to it`)],
+    ["Occupied", C.spruce, inside]
   ]);
   app.querySelector('.a[data-i="1"]').style.color = "var(--on-amber)";
 }
@@ -519,7 +534,7 @@ function nest() {
 }
 
 function card() {
-  inCard = true; save();      // a half-filled dormouse survives a flat battery too
+  inCard = true; save(); screen = card;      // a half-filled dormouse survives a flat battery too
   const m = mice[cur];
   app.innerHTML = head("Cancel") + `<div class="q" style="font-size:22px">Dormouse ${cur + 1}${mice.length > 1 ? ` of ${mice.length}` : ""}</div><div class="rows">` +
     FIELDS.map((f, i) => `<button class="row" data-f="${i}">${f.name}${m[f.name] ? `<b>${esc(m[f.name])}</b>` : `<i>tap</i>`}</button>`).join("") +
@@ -540,6 +555,7 @@ function field(f) {
 function weight(m) {
   let v = "";
   const draw = () => {
+    screen = draw;
     app.innerHTML = head() + `<div class="big">${v || "–"} g</div><div class="pad">` +
       ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map(k => `<button data-k="${k}" aria-label="${k === "⌫" ? "Delete" : k}">${k}</button>`).join("") +
       `</div><button class="btn go" style="padding:18px;font-size:22px" id="ok">Save weight</button>`;
@@ -569,11 +585,11 @@ function summary() {
       <label class="who" for="surveyors">Who checked (licence holder first)<input id="surveyors" autocomplete="off" value="${esc(S.surveyors)}" placeholder="e.g. Tracy, Nick"></label>
       ${S.exported ? `<div class="done-note">✓ Exported at ${esc(S.exported)}</div>` : ""}
       <div class="stats"><div><b>${checked.length}</b>boxes checked</div><div><b style="color:var(--dorm)">${nMice}</b>dormice</div><div><b>${repairs.length}</b>repairs</div></div>
-      ${waiting.length ? `<div><h2>Blocked but never checked</h2><ul class="list">${li(waiting, l => `Box ${esc(l)}`, "red")}</ul></div>` : ""}
+      ${waiting.length ? `<div><h2>Queued but never checked</h2><ul class="list">${li(waiting, l => `Box ${esc(l)}`, "red")}</ul></div>` : ""}
       <div><h2>Dormice</h2><ul class="list">${li(dorms, ([l, r]) => `<b>${esc(l)}</b>, ${r.time}: ` + r.mice.map(x => [x.Sex, x.Weight, x.Status, x.Breeding, x.Age].filter(Boolean).join(", ") || "no details").map(esc).join(" · "))}</ul></div>
       <div><h2>Other finds</h2><ul class="list">${li(other, ([l, r]) => `${esc(l)}: ${esc(r.what)}`)}</ul></div>
-      <div><h2>Repairs needed</h2><ul class="list">${li(repairs, l => `Box ${esc(l)}`)}</ul></div>
-      <div><h2>Next time</h2><ul class="list">${li([...dorms.map(([l]) => `${l}: dormice, go gently`), ...other.filter(([, r]) => r.what === "Bees").map(([l]) => `${l}: bees`), ...repairs.map(l => `${l}: take tools`)], esc)}</ul></div>
+      <div><h2>Repairs needed</h2><ul class="list">${li(repairs, l => `Box ${esc(l)}: ${esc(repLabel(S.repair[l]).toLowerCase())}`)}</ul></div>
+      <div><h2>Next time</h2><ul class="list">${li([...dorms.map(([l]) => `${l}: dormice, go gently`), ...other.filter(([, r]) => r.what === "Bees").map(([l]) => `${l}: bees`), ...repairs.map(l => `${l}: ${repLabel(S.repair[l]).toLowerCase()}, take tools`)], esc)}</ul></div>
     </div>
     <div class="bar"><button class="btn go" style="flex:2;padding:16px" id="exp">Export CSV</button><button class="btn" style="flex:1" id="newday">New day</button></div>`;
   document.getElementById("back").onclick = grid;
@@ -613,9 +629,9 @@ function rows(end) {
     const r = S.rec[l];
     const base = { site: reserveName(S.site), check_date: S.date || today(), coupe: coupeOf(l), surveyors: S.surveyors.trim(),
       start_time: S.started || "", end_time: end, box: l, box_time: r ? r.time : "",
-      box_condition: S.repair[l] ? "needs repair" : "fine" };
+      box_condition: S.repair[l] ? "repair: " + repLabel(S.repair[l]).toLowerCase() : "fine" };
     if (!r) out.push({ ...base, notes: "repair noted, box not recorded" });
-    else if (r.state === "wait") out.push({ ...base, occupied: "blocked", notes: "blocked, not checked" });
+    else if (r.state === "wait") out.push({ ...base, occupied: "queued", notes: "queued, not checked" });
     else if (r.state === "clear") out.push({ ...base, occupied: "no", dm_nest: 0, dm_count: 0 });
     else if (r.state === "other") out.push({ ...base, occupied: "yes", contents: r.what, dm_nest: r.what === "Dormouse nest" ? 1 : 0, dm_count: 0 });
     else r.mice.forEach((m, i) => out.push({ ...base, occupied: "yes", contents: "Dormouse", dm_nest: 1, dm_count: r.mice.length,
