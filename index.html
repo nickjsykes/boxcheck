@@ -31,8 +31,9 @@ html, body { height: 100%; }
 body { background: var(--panel); color: var(--ink); font-family: var(--sans); overflow: hidden; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button { font-family: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
 button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
-#app { height: 100%; display: flex; flex-direction: column; max-width: 520px; margin: 0 auto;
-  padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-block: 10px; gap: 8px; }
+#app { box-sizing: border-box; height: 100%; height: 100dvh; display: flex; flex-direction: column; max-width: 520px; margin: 0 auto;
+  padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px));
+  padding-top: max(10px, env(safe-area-inset-top, 0px)); padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); gap: 8px; }
 .bar { display: flex; align-items: center; gap: 8px; }
 .coupe { flex: 1; min-width: 0; font: 600 20px var(--sans); height: 52px; border-radius: 14px; border: 2px solid var(--green); background: var(--panel); color: var(--ink); padding: 0 12px; }
 .demo { font: 700 12px var(--sans); letter-spacing: .08em; color: var(--muted); background: none; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; }
@@ -40,7 +41,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 .wait button { border: 0; background: var(--amber); color: var(--on-amber); font: 700 16px var(--sans); border-radius: 10px; padding: 6px 12px; }
 .tiles { flex: 1; overflow-y: auto; display: grid; gap: 10px; align-content: start; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 2px 2px 6px; }
 @media (min-width: 560px) { .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.t { aspect-ratio: 1; max-width: 100%; min-width: 0; border: 2px solid var(--edge); box-shadow: 0 3px 0 var(--edge); padding: 0; border-radius: 16px; background: var(--tile); position: relative; display: flex; flex-direction: column; line-height: 1; font-variant-numeric: tabular-nums; }
+.t { aspect-ratio: 1; max-width: 100%; min-width: 0; box-sizing: border-box; border: 2px solid var(--edge); padding: 0; border-radius: 16px; background: var(--tile); position: relative; display: flex; flex-direction: column; line-height: 1; font-variant-numeric: tabular-nums; }
 .t .n { flex: 1; display: flex; align-items: center; justify-content: center; font-size: clamp(44px, 14vw, 64px); font-weight: 800; letter-spacing: -.02em; min-width: 0; }
 .t .n.d3 { font-size: clamp(36px, 11vw, 52px); letter-spacing: -.04em; }
 .t .n.d4 { font-size: clamp(28px, 8.5vw, 40px); letter-spacing: -.04em; }
@@ -68,7 +69,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 .ctitle { flex: 1; min-width: 0; font: 800 28px var(--sans); }
 .cnt { font: 700 16px var(--sans); color: var(--muted); }
 .t.hold { background: var(--amber); color: var(--on-amber); border-color: var(--amber); }
-.t.fix { border-color: var(--danger); box-shadow: 0 3px 0 var(--danger); }
+.t.fix { border: 4px solid var(--danger); }
 .t.done .s, .t.hold .s { background: rgba(0,0,0,.16); }
 .t.done .s.blank, .t.hold .s.blank { background: none; }
 .t .s.bee, .t.done .s.bee, .t.hold .s.bee { background: var(--ink); color: var(--amber); }
@@ -86,7 +87,9 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 .panel .stat { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .panel .stat b { font: 800 20px var(--sans); color: var(--ink); }
 .panel .stat span { font: 600 13px var(--sans); color: var(--muted); }
-.panel .btn.go { padding: 16px 18px; font-size: 17px; flex: 0 0 auto; }
+.panel .btn.go { padding: 16px 14px; font-size: 16px; flex: 0 0 auto; }
+.panel .prow { gap: 8px; }
+.panel #tocoupes { padding: 14px 10px; flex: 0 0 auto; }
 /* In-page reminder sheet (the viewer blocks confirm()) */
 .sheet { position: fixed; inset: 0; background: rgba(20, 20, 15, .55); display: flex; align-items: flex-end; justify-content: center; z-index: 20; padding: 12px max(12px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
 .sheet > div { background: var(--panel); border-radius: 20px; padding: 18px; width: 100%; max-width: 496px; display: flex; flex-direction: column; gap: 10px; }
@@ -106,6 +109,8 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 .q { text-align: center; font-size: 28px; font-weight: 800; margin: 2px 0; }
 .answers { flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 .a { flex: 1; min-height: 56px; border: 0; border-radius: 18px; color: var(--on-solid); font: 800 30px var(--sans); }
+.a.small { flex: 0 0 auto; min-height: 64px; font-size: 22px; color: var(--on-amber); }
+.answers.big .a:not(.small) { font-size: 38px; }
 .a:active, .t:active, .btn:active { transform: scale(.97); }
 .rows { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .row { display: flex; justify-content: space-between; align-items: center; border: 2px solid var(--line); background: var(--card); border-radius: 14px; padding: 16px; font-size: 20px; font-weight: 700; text-align: left; }
@@ -144,8 +149,10 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 .t .s.now { background: rgba(0, 0, 0, .2); font-weight: 800; letter-spacing: .02em; }
 .t.done .s.blank, .t.hold .s.blank, .t .s.blank { background: none; }
 /* Box screen panel: back, coupe and count in one style, finish */
-.ident { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: center; gap: 10px; }
-.ident b { font: 800 32px/1 var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+.ident { flex: 1; min-width: 0; display: flex; justify-content: center; gap: 12px; }
+.ident > div { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.ident b { font: 800 30px/1 var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+.ident b.long { font-size: 18px; line-height: 30px; }
 </style>
 <div id="app"></div>
 <div class="sheet" id="sheet" hidden></div>
@@ -499,7 +506,7 @@ function grid() {
   h += `<div class="panel">` +
     (waiting.length ? `<div class="qrow"><span class="lab">Queue</span>` + waiting.map(l => `<button data-b="${esc(l)}">${esc(short(l))}</button>`).join("") + `</div>` : "") +
     `<div class="prow"><button class="btn" id="tocoupes">Back</button>` +
-    `<div class="ident" aria-label="Coupe ${esc(S.coupe)}, ${done} of ${list.length} done"><b>${esc(S.coupe)}</b><b>${done}/${list.length}</b></div>` +
+    `<div class="ident"><div><b${S.coupe.length > 2 ? ' class="long"' : ""}>${esc(S.coupe)}</b><span class="lab">Coupe</span></div><div><b>${done}/${list.length}</b><span class="lab">Done</span></div></div>` +
     `<button class="btn go" id="finish">Finish coupe</button></div></div>`;
   app.innerHTML = h;
   // Keep every strip on one line: step the text down until it fits, ellipsis as a last resort.
@@ -569,7 +576,8 @@ function wireHead(back) {
 function ask(q, opts, back, keepScreen) {
   if (!keepScreen) screen = () => ask(q, opts, back);
   app.innerHTML = head() + (q ? `<div class="q">${q}</div>` : "") + `<div class="answers">` +
-    opts.map((o, i) => `<button class="a" style="background:${o[1]}" data-i="${i}">${o[0]}</button>`).join("") + `</div>`;
+    opts.map((o, i) => `<button class="a${o[3] ? " small" : ""}" style="background:${o[1]}" data-i="${i}">${o[0]}</button>`).join("") + `</div>`;
+  if (opts.some(o => o[3])) app.querySelector(".answers").classList.add("big");
   wireHead(back);
   app.querySelectorAll(".a").forEach(b => b.onclick = () => opts[+b.dataset.i][2]());
 }
@@ -577,11 +585,10 @@ function ask(q, opts, back, keepScreen) {
 function call() {
   const l = short(box);
   ask("", [
-    ["Empty", C.grey, () => setRec(box, { state: "clear" }, `${l} empty`)],
-    ["Queue", "var(--amber)", () => setRec(box, { state: "wait" }, `${l} queued, come back to it`)],
-    ["Occupied", C.spruce, inside]
+    ["Empty", C.grey, () => setRec(box, { state: "clear" })],
+    ["Occupied", C.spruce, inside],
+    ["Queue", "var(--amber)", () => setRec(box, { state: "wait" }), true]
   ]);
-  app.querySelector('.a[data-i="1"]').style.color = "var(--on-amber)";
 }
 function inside() {
   const other = what => () => setRec(box, { state: "other", what }, `${short(box)}: ${what.toLowerCase()}`);
