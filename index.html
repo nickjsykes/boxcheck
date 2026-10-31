@@ -472,9 +472,29 @@ function toast(msg, undo) {
 }
 document.getElementById("undo").onclick = () => { if (undoFn) undoFn(); document.getElementById("toast").hidden = true; };
 
+// A short tick so you know a box saved without looking: high for a result, low for Queue,
+// two for a finished coupe. iPhones go quiet when the silent switch is on.
+let actx = null;
+function tick(kind) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    const beep = (at, freq) => {
+      const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + at;
+      o.type = "square"; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.2, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + 0.07);
+    };
+    if (kind === "queue") beep(0, 520);
+    else if (kind === "finish") { beep(0, 1320); beep(0.11, 1760); }
+    else beep(0, 1320);
+  } catch (e) { /* no sound is fine */ }
+}
 function setRec(label, rec, msg) {
   const before = S.rec[label];
-  if (rec) { rec.time = now(); S.rec[label] = rec; } else delete S.rec[label];
+  if (rec) { rec.time = now(); S.rec[label] = rec; tick(rec.state === "wait" ? "queue" : "save"); } else delete S.rec[label];
   if (!S.started) S.started = now();
   if (!S.date) S.date = today();
   S.exported = null;           // anything new means the last export is out of date
@@ -526,7 +546,7 @@ function finishCoupe(list, waiting) {
   const unmarked = list.filter(l => !S.rec[l]);
   const close = () => { const sh = document.getElementById("sheet"); sh.hidden = true; sh.innerHTML = ""; };
   const done = msg => {
-    S.finished[S.coupe] = true; S.exported = null; save(); close(); coupes();
+    S.finished[S.coupe] = true; S.exported = null; save(); close(); tick("finish"); coupes();
     toast(msg || `Coupe ${S.coupe} finished`);
   };
   if (!unmarked.length) return done(waiting.length ? `Coupe ${S.coupe} finished, ${waiting.length} still queued` : null);
