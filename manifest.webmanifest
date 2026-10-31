@@ -1,0 +1,14 @@
+{
+  "name": "Box Check",
+  "short_name": "Box Check",
+  "description": "Dormouse box checks: big buttons, works offline, exports the day as a CSV.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#2e6560",
+  "theme_color": "#2e6560",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

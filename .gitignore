@@ -1,0 +1,2 @@
+# Never commit box lists or exports: they are NE data
+*.csv

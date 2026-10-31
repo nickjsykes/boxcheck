@@ -1,0 +1,513 @@
+<meta charset="utf-8">
+<title>Box Check</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#2e6560">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Box Check">
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* One-screen phone tool: coupe header, tile grid, full-screen answer buttons. Field Notes palette. */
+:root {
+  --green: #2e6560; --green-soft: #e2eeeb;
+  --ink: #26261f; --muted: #6b695c;
+  --panel: #fbf9f3; --card: #f1ede1; --line: #e3dfd1;
+  --tile: #ece7d8; --tile-done: #dcd7c6;
+  --amber: #f0a020; --on-amber: #2a1a00;
+  --dorm: #c2410c; --slate: #3b4a6b; --ochre: #8a6100; --grey: #6b695c; --danger: #a33a2a;
+  --on-solid: #ffffff;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --green: #3f8079; --green-soft: #1f2f2c; --ink: #f1efe6; --muted: #b0ad9d;
+  --panel: #1b1a15; --card: #25241e; --line: #35332b; --tile: #2c2a23; --tile-done: #3a382f; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --green: #3f8079; --green-soft: #1f2f2c; --ink: #f1efe6; --muted: #b0ad9d;
+  --panel: #1b1a15; --card: #25241e; --line: #35332b; --tile: #2c2a23; --tile-done: #3a382f; color-scheme: dark }
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--panel); color: var(--ink); font-family: var(--sans); overflow: hidden; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+button { font-family: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+#app { height: 100%; display: flex; flex-direction: column; max-width: 520px; margin: 0 auto;
+  padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-block: 10px; gap: 8px; }
+.bar { display: flex; align-items: center; gap: 8px; }
+.coupe { flex: 1; min-width: 0; font: 600 20px var(--sans); height: 52px; border-radius: 14px; border: 2px solid var(--green); background: var(--panel); color: var(--ink); padding: 0 12px; }
+.demo { font: 700 11px var(--sans); letter-spacing: .08em; color: var(--muted); border: 1.5px solid var(--line); border-radius: 8px; padding: 4px 6px; }
+.wait { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.wait button { border: 0; background: var(--amber); color: var(--on-amber); font: 700 16px var(--sans); border-radius: 10px; padding: 6px 12px; }
+.tiles { flex: 1; overflow-y: auto; display: grid; gap: 4px; align-content: start; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); padding-bottom: 4px; }
+.t { aspect-ratio: 1; max-width: 100%; min-width: 0; border: 0; padding: 0; border-radius: 10px; overflow: hidden; background: var(--tile); position: relative; display: flex; flex-direction: column; line-height: 1; font-variant-numeric: tabular-nums; }
+.t .n { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 800; letter-spacing: -.02em; }
+.cols5 .t .n { font-size: 32px; }
+.t .s { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; font-weight: 700; padding: 4px 5px; text-align: left; background: rgba(0,0,0,.09); }
+.t .s.blank { background: none; }
+.t .s.bee { background: var(--ink); color: var(--amber); font-weight: 800; }
+.t .s.rp { background: var(--danger); color: var(--on-solid); }
+.t .s em { font-style: normal; font-weight: 500; opacity: .75; }
+.t.sfx .n { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 4px; }
+.t.done { background: var(--green); color: var(--on-solid); }
+.t.hold { background: var(--amber); color: var(--on-amber); }
+.t.fix { box-shadow: inset 0 0 0 3px var(--danger); }
+.t.done .s, .t.hold .s { background: rgba(0,0,0,.16); }
+.t.done .s.blank, .t.hold .s.blank { background: none; }
+.t .s.bee, .t.done .s.bee, .t.hold .s.bee { background: var(--ink); color: var(--amber); }
+.foot { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.foot span { flex: 1; }
+.btn { border: 0; border-radius: 12px; padding: 12px 16px; font: 700 16px var(--sans); background: var(--card); }
+.btn.go { background: var(--green); color: var(--on-solid); }
+.key { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); }
+.key i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+.head { display: flex; align-items: center; gap: 8px; }
+.head h1 { flex: 1; margin: 0; font-size: 30px; font-weight: 800; }
+.rep { border: 2px solid var(--danger); color: var(--danger); background: none; border-radius: 12px; font: 700 14px var(--sans); padding: 9px 10px; }
+.rep.on { background: var(--danger); color: var(--on-solid); }
+.last { background: var(--card); border-left: 5px solid var(--amber); border-radius: 0; padding: 9px 12px; font-size: 16px; font-weight: 600; }
+.last em { font-style: normal; color: var(--muted); font-weight: 500; font-size: 13px; display: block; }
+.q { text-align: center; font-size: 28px; font-weight: 800; margin: 2px 0; }
+.answers { flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.a { flex: 1; min-height: 56px; border: 0; border-radius: 18px; color: var(--on-solid); font: 800 30px var(--sans); }
+.a:active, .t:active, .btn:active { transform: scale(.97); }
+.rows { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; justify-content: space-between; align-items: center; border: 2px solid var(--line); background: var(--card); border-radius: 14px; padding: 16px; font-size: 20px; font-weight: 700; text-align: left; }
+.row b { color: var(--green); font-weight: 800; }
+.row i { font-style: normal; color: var(--muted); font-weight: 500; font-size: 16px; }
+.pad { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pad button { border: 0; border-radius: 16px; background: var(--card); font: 800 32px var(--sans); }
+.pad .ok { background: var(--green); color: var(--on-solid); }
+.big { text-align: center; font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.sum { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.sum h2 { margin: 0 0 4px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stats div { background: var(--card); border-radius: 12px; padding: 10px; font-size: 13px; color: var(--muted); }
+.stats b { display: block; font-size: 26px; color: var(--ink); }
+.list { margin: 0; padding: 0; list-style: none; font-size: 15px; }
+.list li { padding: 7px 0; border-bottom: 1px solid var(--line); }
+.list li.red { color: var(--danger); font-weight: 600; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--panel); border-radius: 14px; padding: 12px 14px; display: flex; gap: 14px; align-items: center; font-size: 16px; font-weight: 600; max-width: calc(100% - 32px); }
+.toast button { border: 0; background: none; color: var(--amber); font: 800 16px var(--sans); }
+.who { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.who input { font: 600 18px var(--sans); padding: 10px 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--ink); }
+.who input:focus-visible { outline: 3px solid var(--amber); outline-offset: 1px; }
+.done-note { font-size: 14px; font-weight: 600; color: var(--green); }
+.prev { overflow: auto; border: 1px solid var(--line); border-radius: 10px; max-height: 40vh; }
+.prev table { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+.prev th, .prev td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; font-variant-numeric: tabular-nums; }
+.prev th { position: sticky; top: 0; background: var(--card); color: var(--muted); font-weight: 700; }
+.btn.warn { background: var(--danger); color: var(--on-solid); }
+.stack { display: flex; flex-direction: column; gap: 8px; }
+@media (prefers-reduced-motion: reduce) { .a:active, .t:active, .btn:active { transform: none; } }
+</style>
+<div id="app"></div>
+<div class="toast" id="toast" hidden><span id="toastMsg"></span><button id="undo">Undo</button></div>
+<script>
+// No real box numbers in this file: it's public. The real list is loaded on the phone from a CSV.
+const EXAMPLE_BOXES = {"A": ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"], "B": ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12"], "K": ["K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9", "K10", "K11", "K12", "K13", "K14", "K15", "K16", "K17", "K18", "K19", "K20"]};
+let BOXES = null, EXAMPLE = false;
+
+// Example history for the example boxes, so the "last time" markers have something to show. Not real records.
+const EXAMPLE_LAST = {
+  "K5": { tag: "2 dorm", text: "2 dormice, both torpid", when: "Sep" },
+  "K12": { tag: "BEES", bees: true, text: "Bees", when: "Sep" },
+  "K9": { tag: "WM nest", text: "Wood mouse nest", when: "Sep" },
+  "K14": { tag: "Clear", text: "Clear", when: "Sep" },
+  "B4": { tag: "Bird nest", text: "Bird nest", when: "Sep" },
+  "B7": { tag: "1 dorm", text: "1 dormouse, female, lactating", when: "Sep" }
+};
+let LAST = {};
+const SHORT = { "Bees": "Bees", "Bat": "Bat", "Birds": "Birds", "Wood mouse nest": "WM nest", "Bird nest": "Bird nest", "Dormouse nest": "DM nest", "Other nest": "Nest" };
+
+const C = { orange: "var(--dorm)", spruce: "var(--green)", slate: "var(--slate)", ochre: "var(--ochre)", grey: "var(--grey)", red: "var(--danger)" };
+const FIELDS = [
+  { name: "Sex", opts: [["Male", C.spruce], ["Female", C.orange], ["Unknown", C.grey]] },
+  { name: "Weight" },
+  { name: "Status", opts: [["Torpid", C.slate], ["Active", C.spruce], ["Dead", C.grey]] },
+  { name: "Breeding" },
+  { name: "Age", opts: [["Adult", C.spruce], ["Juvenile", C.slate], ["Eyes open", C.ochre], ["Grey, eyes closed", C.grey], ["Pink", C.orange]] }
+];
+const BREED = {
+  Male: [["Testes scrotal", C.orange], ["Non-breeding", C.spruce], ["Unknown", C.grey]],
+  Female: [["Pregnant", C.orange], ["Lactating", C.ochre], ["Post-lactating", C.slate], ["Non-breeding", C.spruce], ["Unknown", C.grey]],
+  Unknown: [["Non-breeding", C.spruce], ["Unknown", C.grey]]
+};
+
+const S = { coupe: "K", rec: {}, repair: {}, started: null, date: null, surveyors: "", exported: null };
+let box = null, mice = [], cur = 0, undoFn = null, toastT = null, inCard = false;
+const app = document.getElementById("app");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const short = l => l.replace(/^S /, "");
+const now = () => new Date().toTimeString().slice(0, 5);
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const nice = iso => new Date(iso + "T12:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
+// ---- Autosave: everything lives on the phone until it's exported. ---------------------------
+const KEY = "boxcheck.session.v1";
+function save() {
+  const draft = inCard && box && mice.length ? { box, mice, cur } : null;
+  try { localStorage.setItem(KEY, JSON.stringify({ ...S, draft })); } catch (e) { /* private mode: still works, just no autosave */ }
+}
+function load() {
+  try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { return null; }
+}
+function wipe() {
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  Object.assign(S, { rec: {}, repair: {}, started: null, date: null, surveyors: "", exported: null });
+  box = null; mice = []; cur = 0; inCard = false;
+}
+const hasData = () => Object.keys(S.rec).length > 0 || Object.values(S.repair).some(Boolean);
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+
+// ---- The box list: loaded once from a CSV (box, coupe) and kept on the phone. -------------
+const BOXES_KEY = "boxcheck.boxes.v1";
+const countBoxes = b => Object.values(b).reduce((n, v) => n + v.length, 0);
+function useBoxes(list, example) {
+  BOXES = list; EXAMPLE = !!example; LAST = example ? EXAMPLE_LAST : {};
+  if (!BOXES[S.coupe]) S.coupe = Object.keys(BOXES)[0];
+}
+function storedBoxes() {
+  try { const d = JSON.parse(localStorage.getItem(BOXES_KEY) || "null"); return d && d.boxes && Object.keys(d.boxes).length ? d : null; }
+  catch (e) { return null; }
+}
+function storeBoxes(boxes, example, label) {
+  useBoxes(boxes, example);
+  try { localStorage.setItem(BOXES_KEY, JSON.stringify({ boxes, example, label, loaded: today() })); } catch (e) {}
+}
+function parseList(text) {
+  const lines = text.replace(/^﻿/, "").split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return null;
+  const cells = l => l.split(/[,\t;]/).map(c => c.trim().replace(/^"|"$/g, ""));
+  let bi = 0, ci = 1, from = 0;
+  const h = cells(lines[0]).map(c => c.toLowerCase());
+  if (h.includes("box") || h.includes("coupe")) { bi = h.indexOf("box"); ci = h.indexOf("coupe"); from = 1; if (bi < 0 || ci < 0) return null; }
+  const out = {};
+  for (const l of lines.slice(from)) {
+    const c = cells(l), b = c[bi], k = c[ci];
+    if (!b || !k) continue;
+    out[k] = out[k] || [];
+    if (!out[k].includes(b)) out[k].push(b);
+  }
+  return Object.keys(out).length ? out : null;
+}
+function setupView(msg) {
+  const cur = storedBoxes();
+  app.innerHTML = `<div class="head"><h1 style="font-size:26px">Box list</h1>${BOXES ? `<button class="btn" id="back">Back</button>` : ""}</div>
+    <div class="sum">
+      <div style="font-size:16px">Box Check needs the list of boxes and the coupe each one is in. It stays on this phone.</div>
+      ${cur ? `<div class="done-note">Using: ${esc(cur.label)} (${countBoxes(cur.boxes)} boxes, ${Object.keys(cur.boxes).length} coupes)</div>` : ""}
+      ${msg ? `<div class="done-note" style="color:var(--danger)">${esc(msg)}</div>` : ""}
+      <div style="color:var(--muted);font-size:14px">A CSV with two columns, <b>box</b> and <b>coupe</b>, one row per box. Save it to Files from email or OneDrive, then load it here.</div>
+      <label class="who" for="paste">Or paste the list<textarea id="paste" rows="5" style="font:15px var(--sans);padding:10px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink)" placeholder="box,coupe&#10;S 1,K&#10;S 2,K"></textarea></label>
+    </div>
+    <div class="stack">
+      <label class="btn go" style="padding:16px;text-align:center" for="file">Load box list (CSV)</label>
+      <input id="file" type="file" accept=".csv,text/csv,text/plain" style="position:absolute;opacity:0;width:1px;height:1px">
+      <div class="bar"><button class="btn" style="flex:1" id="usepaste">Use pasted list</button><button class="btn" style="flex:1" id="example">Try example boxes</button></div>
+    </div>`;
+  if (BOXES) document.getElementById("back").onclick = grid;
+  const take = (text, label) => {
+    const b = parseList(text);
+    if (!b) return setupView("That list needs a box column and a coupe column.");
+    storeBoxes(b, false, label); grid(); toast(`Loaded ${countBoxes(b)} boxes`);
+  };
+  document.getElementById("file").onchange = e => { const f = e.target.files[0]; if (f) f.text().then(t => take(t, f.name)); };
+  document.getElementById("usepaste").onclick = () => take(document.getElementById("paste").value, "pasted list");
+  document.getElementById("example").onclick = () => { storeBoxes(EXAMPLE_BOXES, true, "example boxes"); grid(); toast("Example boxes: practice only"); };
+}
+
+function toast(msg, undo) {
+  const t = document.getElementById("toast");
+  document.getElementById("toastMsg").textContent = msg;
+  undoFn = undo; document.getElementById("undo").hidden = !undo;
+  t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 5000);
+}
+document.getElementById("undo").onclick = () => { if (undoFn) undoFn(); document.getElementById("toast").hidden = true; };
+
+function setRec(label, rec, msg) {
+  const before = S.rec[label];
+  if (rec) { rec.time = now(); S.rec[label] = rec; } else delete S.rec[label];
+  if (!S.started) S.started = now();
+  if (!S.date) S.date = today();
+  S.exported = null;           // anything new means the last export is out of date
+  grid();
+  if (msg) toast(msg, () => { if (before) S.rec[label] = before; else delete S.rec[label]; grid(); });
+}
+
+function grid() {
+  inCard = false; save();
+  const list = BOXES[S.coupe];
+  const waiting = list.filter(l => S.rec[l] && S.rec[l].state === "wait");
+  const done = list.filter(l => S.rec[l] && S.rec[l].state !== "wait").length;
+  let h = `<div class="bar"><select class="coupe" id="coupe" aria-label="Coupe">` +
+    Object.keys(BOXES).map(k => `<option value="${k}"${k === S.coupe ? " selected" : ""}>Coupe ${k}</option>`).join("") +
+    `</select><button class="demo" id="boxes" aria-label="Box list">${EXAMPLE ? "EXAMPLE" : "BOXES"}</button></div>`;
+  if (waiting.length) h += `<div class="wait">Waiting for you:` + waiting.map(l => `<button data-b="${esc(l)}">${esc(short(l))}</button>`).join("") + `</div>`;
+  h += `<div class="tiles${list.length > 24 ? " cols5" : ""}" style="--cols:${list.length > 24 ? 5 : 4}">`;
+  for (const l of list) {
+    const r = S.rec[l], lt = LAST[l];
+    const cls = (r ? (r.state === "wait" ? "hold" : "done") : "") + (S.repair[l] ? " fix" : "");
+    const today = !r ? "" : r.state === "wait" ? "Waiting" : "✓ " + (r.state === "clear" ? "Clear" : r.state === "dorm" ? `${r.mice.length} dorm` : SHORT[r.what] || r.what);
+    const top = lt ? `<span class="s${lt.bees ? " bee" : ""}">${lt.bees ? "⚠ " : "<em>Last</em> "}${esc(lt.tag)}</span>` : `<span class="s blank">&nbsp;</span>`;
+    const bot = S.repair[l] ? `<span class="s rp">⚒ ${esc(today.replace("✓ ", "") || "Repair")}</span>`
+      : today ? `<span class="s">${esc(today)}</span>` : `<span class="s blank">&nbsp;</span>`;
+    h += `<button class="t ${cls}${/[a-e]$/.test(l) ? " sfx" : ""}" data-b="${esc(l)}" aria-label="Box ${esc(l)}">` +
+      top + `<span class="n">${esc(short(l))}</span>` + bot + `</button>`;
+  }
+  h += `</div><div class="key"><span><i style="background:var(--tile)"></i>To do</span><span><i style="background:var(--amber)"></i>Waiting</span><span><i style="background:var(--green)"></i>Done</span><span><i style="box-shadow:inset 0 0 0 2px var(--danger)"></i>Needs repair</span><span>Top strip = last time · bottom strip = today · underlined = an "a" box</span></div>`;
+  h += `<div class="foot"><span>${done} of ${list.length} done</span><button class="btn go" id="finish">Finish day</button></div>`;
+  app.innerHTML = h;
+  // Keep every strip on one line: step the text down until it fits, ellipsis as a last resort.
+  const fit = s => { s.style.fontSize = ""; for (let f = 12; f > 10 && s.scrollWidth > s.clientWidth; f--) s.style.fontSize = (f - 1) + "px"; };
+  const strips = [...app.querySelectorAll(".t .s")];
+  strips.forEach(fit);
+  // If any "Last" label won't fit, drop it on every tile in this coupe so they all read the same way.
+  if (strips.some(s => s.querySelector("em") && s.scrollWidth > s.clientWidth))
+    strips.forEach(s => { const em = s.querySelector("em"); if (em) { em.remove(); fit(s); } });
+  document.getElementById("coupe").onchange = e => { S.coupe = e.target.value; grid(); };
+  document.getElementById("boxes").onclick = () => setupView();
+  app.querySelectorAll("[data-b]").forEach(b => b.onclick = () => {
+    box = b.dataset.b; const r = S.rec[box];
+    r && r.state === "wait" ? inside() : call();
+  });
+  document.getElementById("finish").onclick = summary;
+}
+
+function head(backLabel) {
+  const lt = LAST[box];
+  return `<div class="head"><h1>Box ${esc(short(box))}</h1>` +
+    `<button class="rep${S.repair[box] ? " on" : ""}" id="rep">${S.repair[box] ? "Repair noted" : "Needs repair"}</button>` +
+    `<button class="btn" id="back">${backLabel || "Back"}</button></div>` +
+    (lt ? `<div class="last">Last time: ${esc(lt.text)}<em>${esc(lt.when)} check · example</em></div>` : "");
+}
+function wireHead(back) {
+  document.getElementById("rep").onclick = e => {
+    S.repair[box] = !S.repair[box];
+    if (!S.date) S.date = today();
+    S.exported = null;
+    save();
+    e.target.classList.toggle("on", S.repair[box]);
+    e.target.textContent = S.repair[box] ? "Repair noted" : "Needs repair";
+  };
+  document.getElementById("back").onclick = back || grid;
+}
+function ask(q, opts, back) {
+  app.innerHTML = head() + `<div class="q">${q}</div><div class="answers">` +
+    opts.map((o, i) => `<button class="a" style="background:${o[1]}" data-i="${i}">${o[0]}</button>`).join("") + `</div>`;
+  wireHead(back);
+  app.querySelectorAll(".a").forEach(b => b.onclick = () => opts[+b.dataset.i][2]());
+}
+
+function call() {
+  const l = short(box);
+  ask("Occupied?", [
+    ["No — clear", C.grey, () => setRec(box, { state: "clear" }, `${l} clear`)],
+    ["Blocked, wait", "var(--amber)", () => setRec(box, { state: "wait" }, `${l} waiting for you`)],
+    ["Yes — check now", C.spruce, inside]
+  ]);
+  app.querySelector('.a[data-i="1"]').style.color = "var(--on-amber)";
+}
+function inside() {
+  const other = what => () => setRec(box, { state: "other", what }, `${short(box)}: ${what.toLowerCase()}`);
+  ask("What's inside?", [
+    ["Dormouse", C.orange, () => { mice = [{}]; cur = 0; card(); }],
+    ["Bat", C.slate, other("Bat")],
+    ["Bees / wasps", C.ochre, other("Bees")],
+    ["Birds", C.spruce, other("Birds")],
+    ["Nest only", C.grey, nest]
+  ]);
+}
+function nest() {
+  const n = what => () => setRec(box, { state: "other", what }, `${short(box)}: ${what.toLowerCase()}`);
+  ask("What kind of nest?", [
+    ["Wood mouse", C.ochre, n("Wood mouse nest")],
+    ["Bird", C.spruce, n("Bird nest")],
+    ["Dormouse", C.orange, n("Dormouse nest")],
+    ["Other", C.grey, n("Other nest")]
+  ], inside);
+}
+
+function card() {
+  inCard = true; save();      // a half-filled dormouse survives a flat battery too
+  const m = mice[cur];
+  app.innerHTML = head("Cancel") + `<div class="q" style="font-size:22px">Dormouse ${cur + 1}${mice.length > 1 ? ` of ${mice.length}` : ""}</div><div class="rows">` +
+    FIELDS.map((f, i) => `<button class="row" data-f="${i}">${f.name}${m[f.name] ? `<b>${esc(m[f.name])}</b>` : `<i>tap</i>`}</button>`).join("") +
+    (mice.length > 1 ? `<div class="foot" style="justify-content:center;gap:6px">` + mice.map((_, i) => `<button class="btn${i === cur ? " go" : ""}" data-m="${i}">${i + 1}</button>`).join("") + `</div>` : "") +
+    `</div><div class="bar"><button class="btn" style="flex:1;padding:16px" id="add">+ Another dormouse</button><button class="btn go" style="flex:1;padding:16px" id="done">Box done</button></div>`;
+  wireHead(call);
+  app.querySelectorAll("[data-f]").forEach(b => b.onclick = () => field(FIELDS[+b.dataset.f]));
+  app.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { cur = +b.dataset.m; card(); });
+  document.getElementById("add").onclick = () => { mice.push({}); cur = mice.length - 1; card(); };
+  document.getElementById("done").onclick = () => setRec(box, { state: "dorm", mice: mice.map(x => ({ ...x })) }, `${short(box)}: ${mice.length} ${mice.length === 1 ? "dormouse" : "dormice"} saved`);
+}
+function field(f) {
+  const m = mice[cur];
+  if (f.name === "Weight") return weight(m);
+  const opts = f.name === "Breeding" ? BREED[m.Sex || "Unknown"] : f.opts;
+  ask(f.name + (f.name === "Breeding" && !m.Sex ? " (set sex first for more)" : ""), opts.map(o => [o[0], o[1], () => { m[f.name] = o[0]; card(); }]), card);
+}
+function weight(m) {
+  let v = "";
+  const draw = () => {
+    app.innerHTML = head() + `<div class="big">${v || "–"} g</div><div class="pad">` +
+      ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map(k => `<button data-k="${k}" aria-label="${k === "⌫" ? "Delete" : k}">${k}</button>`).join("") +
+      `</div><button class="btn go" style="padding:18px;font-size:22px" id="ok">Save weight</button>`;
+    wireHead(card);
+    app.querySelectorAll("[data-k]").forEach(b => b.onclick = () => {
+      const k = b.dataset.k;
+      if (k === "⌫") v = v.slice(0, -1); else if (v.length < 5 && !(k === "." && v.includes("."))) v += k;
+      draw();
+    });
+    document.getElementById("ok").onclick = () => { if (v) m.Weight = v + " g"; card(); };
+  };
+  draw();
+}
+
+function summary() {
+  const all = Object.entries(S.rec);
+  const checked = all.filter(([, r]) => r.state !== "wait");
+  const dorms = all.filter(([, r]) => r.state === "dorm");
+  const nMice = dorms.reduce((n, [, r]) => n + r.mice.length, 0);
+  const waiting = all.filter(([, r]) => r.state === "wait").map(([l]) => l);
+  const repairs = Object.keys(S.repair).filter(l => S.repair[l]);
+  const other = all.filter(([, r]) => r.state === "other");
+  const li = (arr, f, cls) => arr.length ? arr.map(x => `<li${cls ? ` class="${cls}"` : ""}>${f(x)}</li>`).join("") : `<li>None</li>`;
+  app.innerHTML = `<div class="head"><h1 style="font-size:26px">Day summary</h1><button class="btn" id="back">Back</button></div>
+    <div class="sum">
+      <div style="color:var(--muted);font-size:14px">Roudsea · ${nice(S.date || today())} · ${S.started || "–"} to ${now()}</div>
+      <label class="who" for="surveyors">Who checked (licence holder first)<input id="surveyors" autocomplete="off" value="${esc(S.surveyors)}" placeholder="e.g. Tracy, Nick"></label>
+      ${S.exported ? `<div class="done-note">✓ Exported at ${esc(S.exported)}</div>` : ""}
+      <div class="stats"><div><b>${checked.length}</b>boxes checked</div><div><b style="color:var(--dorm)">${nMice}</b>dormice</div><div><b>${repairs.length}</b>repairs</div></div>
+      ${waiting.length ? `<div><h2>Blocked but never checked</h2><ul class="list">${li(waiting, l => `Box ${esc(l)}`, "red")}</ul></div>` : ""}
+      <div><h2>Dormice</h2><ul class="list">${li(dorms, ([l, r]) => `<b>${esc(l)}</b>, ${r.time}: ` + r.mice.map(x => [x.Sex, x.Weight, x.Status, x.Breeding, x.Age].filter(Boolean).join(", ") || "no details").map(esc).join(" · "))}</ul></div>
+      <div><h2>Other finds</h2><ul class="list">${li(other, ([l, r]) => `${esc(l)}: ${esc(r.what)}`)}</ul></div>
+      <div><h2>Repairs needed</h2><ul class="list">${li(repairs, l => `Box ${esc(l)}`)}</ul></div>
+      <div><h2>Next time</h2><ul class="list">${li([...dorms.map(([l]) => `${l}: dormice, go gently`), ...other.filter(([, r]) => r.what === "Bees").map(([l]) => `${l}: bees`), ...repairs.map(l => `${l}: take tools`)], esc)}</ul></div>
+    </div>
+    <div class="bar"><button class="btn go" style="flex:2;padding:16px" id="exp">Export CSV</button><button class="btn" style="flex:1" id="newday">New day</button></div>`;
+  document.getElementById("back").onclick = grid;
+  document.getElementById("surveyors").oninput = e => { S.surveyors = e.target.value; save(); };
+  document.getElementById("exp").onclick = exportView;
+  armNewDay(document.getElementById("newday"));
+}
+
+// New day wipes the phone's copy, so it takes two taps, and says so if nothing was exported.
+function armNewDay(btn) {
+  let armed = false;
+  btn.onclick = () => {
+    if (!hasData() || armed) { wipe(); grid(); toast("New day started"); return; }
+    armed = true;
+    btn.classList.add("warn");
+    btn.textContent = S.exported ? "Tap again" : "Not exported! Tap again to delete";
+    setTimeout(() => { armed = false; btn.classList.remove("warn"); btn.textContent = "New day"; }, 4000);
+  };
+}
+
+// ---- Export: one row per box, or per dormouse, in NDMP sheet order. ------------------------
+const COLS = ["site", "check_date", "coupe", "surveyors", "start_time", "end_time", "box", "box_time", "occupied", "contents",
+  "dm_nest", "dm_count", "dormouse_no", "sex", "weight_g", "status", "breeding", "age", "mouse_id", "box_condition", "notes"];
+const CODE = {
+  Sex: { Male: "M", Female: "F", Unknown: "U" },
+  Status: { Torpid: "T", Active: "A", Dead: "D" },
+  Breeding: { "Testes scrotal": "TS", Pregnant: "P", Lactating: "L", "Post-lactating": "PL", "Non-breeding": "NB", Unknown: "U" },
+  Age: { Adult: "Adult", Juvenile: "Juv", "Eyes open": "EO", "Grey, eyes closed": "GEC", Pink: "Pink" }
+};
+const coupeOf = l => Object.keys(BOXES).find(k => BOXES[k].includes(l)) || "";
+const order = l => { const k = coupeOf(l); return Object.keys(BOXES).indexOf(k) * 1000 + BOXES[k].indexOf(l); };
+
+function rows(end) {
+  const labels = [...new Set([...Object.keys(S.rec), ...Object.keys(S.repair).filter(l => S.repair[l])])].sort((a, b) => order(a) - order(b));
+  const out = [];
+  for (const l of labels) {
+    const r = S.rec[l];
+    const base = { site: "Roudsea", check_date: S.date || today(), coupe: coupeOf(l), surveyors: S.surveyors.trim(),
+      start_time: S.started || "", end_time: end, box: l, box_time: r ? r.time : "",
+      box_condition: S.repair[l] ? "needs repair" : "fine" };
+    if (!r) out.push({ ...base, notes: "repair noted, box not recorded" });
+    else if (r.state === "wait") out.push({ ...base, occupied: "blocked", notes: "blocked, not checked" });
+    else if (r.state === "clear") out.push({ ...base, occupied: "no", dm_nest: 0, dm_count: 0 });
+    else if (r.state === "other") out.push({ ...base, occupied: "yes", contents: r.what, dm_nest: r.what === "Dormouse nest" ? 1 : 0, dm_count: 0 });
+    else r.mice.forEach((m, i) => out.push({ ...base, occupied: "yes", contents: "Dormouse", dm_nest: 1, dm_count: r.mice.length,
+      dormouse_no: i + 1, sex: CODE.Sex[m.Sex] || "", weight_g: (m.Weight || "").replace(" g", ""), status: CODE.Status[m.Status] || "",
+      breeding: CODE.Breeding[m.Breeding] || "", age: CODE.Age[m.Age] || "" }));
+  }
+  return out;
+}
+function toCSV(rs) {
+  const q = v => { v = v == null ? "" : String(v); return /[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
+  return [COLS.join(","), ...rs.map(r => COLS.map(c => q(r[c])).join(","))].join("\r\n") + "\r\n";
+}
+
+function exportView() {
+  const end = now(), rs = rows(end), csv = toCSV(rs);
+  const coupes = [...new Set(rs.map(r => r.coupe))].join("-") || S.coupe;
+  const name = `${S.date || today()}_roudsea_dormouse-boxes_${coupes}.csv`;
+  const file = new File([csv], name, { type: "text/csv" });
+  const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
+  const done = how => { S.exported = `${now()} (${how})`; save(); summary(); toast("Exported. Keep the file safe until it's on the map"); };
+  app.innerHTML = `<div class="head"><h1 style="font-size:26px">Export</h1><button class="btn" id="back">Back</button></div>
+    <div class="sum">
+      <div style="font-size:15px"><b>${rs.length}</b> rows · ${esc(name)}</div>
+      ${S.surveyors.trim() ? "" : `<div class="done-note" style="color:var(--danger)">Who checked is blank. Go back and add it first.</div>`}
+      <div class="prev"><table><tr>${COLS.map(c => `<th>${c}</th>`).join("")}</tr>${rs.slice(0, 30).map(r => `<tr>${COLS.map(c => `<td>${esc(r[c] ?? "")}</td>`).join("")}</tr>`).join("")}</table></div>
+      <div style="color:var(--muted);font-size:13px">One row per box, or per dormouse, in NDMP sheet order. On a desk: ArcGIS Online → Box checks → Update data → Append.</div>
+    </div>
+    <div class="stack">
+      ${canShare ? `<button class="btn go" style="padding:16px" id="share">Share file (OneDrive, email…)</button>` : ""}
+      <div class="bar"><button class="btn${canShare ? "" : " go"}" style="flex:1" id="savefile">Save file</button><button class="btn" style="flex:1" id="copy">Copy CSV</button></div>
+    </div>`;
+  document.getElementById("back").onclick = summary;
+  if (canShare) document.getElementById("share").onclick = async () => {
+    try { await navigator.share({ files: [file], title: name }); done("shared"); }
+    catch (e) { if (e.name !== "AbortError") toast("Couldn't open sharing here. Use Save file or Copy CSV"); }
+  };
+  document.getElementById("savefile").onclick = async () => {
+    // Inside the Claude viewer, files go through its own save prompt; anywhere else, a plain download.
+    const dl = window.claude && window.claude.use ? await window.claude.use("downloads").catch(() => null) : null;
+    if (dl) {
+      try { await dl.save({ filename: name, data: csv }); done("saved"); }
+      catch (e) { if (!e || e.code !== "declined") toast("Couldn't save here. Use Copy CSV"); }
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(file); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    done("saved");
+  };
+  document.getElementById("copy").onclick = async () => {
+    try { await navigator.clipboard.writeText(csv); done("copied"); }
+    catch (e) { toast("Copy blocked here. Use Save file"); }
+  };
+}
+
+// ---- Start: carry on with today's check, or deal with an old one that was never exported. --
+function start() {
+  const list = storedBoxes();
+  if (!list) { setupView(); return; }
+  useBoxes(list.boxes, list.example);
+  const d = load();
+  if (d && (Object.keys(d.rec || {}).length || Object.values(d.repair || {}).some(Boolean))) {
+    Object.assign(S, { coupe: BOXES[d.coupe] ? d.coupe : S.coupe, rec: d.rec || {}, repair: d.repair || {}, started: d.started || null,
+      date: d.date || null, surveyors: d.surveyors || "", exported: d.exported || null });
+    if (S.date && S.date !== today()) {
+      if (S.exported) { wipe(); grid(); return; }
+      const n = Object.keys(S.rec).length;
+      app.innerHTML = `<div class="head"><h1 style="font-size:26px">Unexported check</h1></div>
+        <div class="sum"><div style="font-size:18px;font-weight:600">${esc(nice(S.date))}: ${n} box${n === 1 ? "" : "es"} recorded, never exported.</div>
+        <div style="color:var(--muted)">Export it before starting today, or it'll be lost.</div></div>
+        <div class="stack"><button class="btn go" style="padding:16px" id="old">Export it now</button><button class="btn" id="newday">Start today instead</button></div>`;
+      document.getElementById("old").onclick = summary;
+      armNewDay(document.getElementById("newday"));
+      return;
+    }
+    if (d.draft && d.draft.box) {
+      box = d.draft.box; mice = d.draft.mice || [{}]; cur = Math.min(d.draft.cur || 0, mice.length - 1);
+      card(); toast(`Picked up box ${short(box)} where you left off`); return;
+    }
+    grid(); toast(`Carried on: ${Object.keys(S.rec).length} boxes already done`); return;
+  }
+  grid();
+}
+start();
+// Works with no signal once it's been opened: the page is cached on the phone.
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
