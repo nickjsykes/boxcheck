@@ -795,6 +795,19 @@ function start() {
   coupes();
 }
 start();
+// Keep the screen on while the app is open (Safari 16.4+; in a Home Screen app from iOS 18.4).
+// The phone lets go when the app is hidden, so ask again each time it comes back, and on a tap.
+let wakeLock = null;
+async function keepAwake() {
+  if (wakeLock || !("wakeLock" in navigator) || document.visibilityState !== "visible") return;
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release", () => { wakeLock = null; });
+  } catch (e) { wakeLock = null; }
+}
+document.addEventListener("visibilitychange", keepAwake);
+document.addEventListener("pointerdown", keepAwake);
+keepAwake();
 // Works with no signal once it's been opened: the page is cached on the phone.
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
