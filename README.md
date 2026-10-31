@@ -8,8 +8,8 @@ gloves, rain and people shouting box numbers.
 - **Exports the day as a CSV**, one row per box or per dormouse in NDMP sheet order, through the phone's
   share sheet. The CSV goes into ArcGIS Online with Append.
 
-**No box data lives here.** This repo is public. On first open the app asks for a box list: a CSV
-with `box` and `coupe` columns, loaded from the phone. It never leaves the phone. "Try example boxes"
-gives fake boxes for practice.
+**Box numbers and coupes are built in (Roudsea); box locations never go in this repo.** It's public.
+A different list (another site, boxes added or moved) can be loaded on the phone from a CSV with `box`
+and `coupe` columns. "Try example boxes" gives fake boxes for practice.
 
 One file (`index.html`), no build step, no server. `sw.js` caches it for offline use.

@@ -101,7 +101,8 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 <div id="app"></div>
 <div class="toast" id="toast" hidden><span id="toastMsg"></span><button id="undo">Undo</button></div>
 <script>
-// No real box numbers in this file: it's public. The real list is loaded on the phone from a CSV.
+// Box numbers and coupes are fine to publish (Nick, 31 Oct 2026). Box LOCATIONS never go in this file.
+const ROUDSEA_BOXES = {"A": ["161", "162", "163", "164", "165", "166", "167", "168", "169", "170"], "B": ["81", "82", "83", "84", "85", "86", "87", "88", "89", "90", "91", "92", "93", "94", "95", "96", "97", "98", "99", "100"], "C": ["181", "182", "183", "184", "185"], "D": ["171", "172", "173", "174", "175", "176", "177", "178", "179", "180"], "E": ["61", "62", "63", "64", "65", "66", "67", "68", "69", "70", "71", "72"], "F": ["146", "147", "148", "149", "150", "151", "152", "153", "154", "155", "156", "157", "158", "159", "160"], "G": ["31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60"], "H": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"], "I": ["126", "127", "128", "129", "130", "131", "132", "133", "134", "135", "136", "137", "138", "139", "140", "141", "142", "143", "144", "145", "191", "192", "193", "194", "195"], "J": ["101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114", "115", "115a", "115b", "115c", "115d", "115e"], "K": ["S 1", "S 2", "S 3", "S 4", "S 5", "S 6", "S 7", "S 8", "S 9", "S 10", "S 11", "S 12", "S 13", "S 14", "S 15", "S 16", "S 17", "S 18", "S 19", "S 20"], "L": ["S 56", "S 57", "S 58", "S 59", "S 60", "S 61", "S 62", "S 63", "S 64", "S 65", "S 66", "S 67", "S 68", "S 69", "S 70"], "M": ["S 21", "S 22", "S 23", "S 24", "S 25", "S 26", "S 27", "S 28", "S 29", "S 30", "S 31", "S 32", "S 33", "S 34", "S 35", "S 36", "S 37", "S 38", "S 39", "S 40"], "N": ["S 71", "S 72", "S 73", "S 74", "S 75", "S 76", "S 77", "S 78", "S 79", "S 80", "S 81", "S 82", "S 83", "S 84", "S 85", "S 86", "S 87", "S 88", "S 89", "S 90", "S 91", "S 92", "S 93", "S 94", "S 95", "S 96", "S 97", "S 98", "S 99", "S 100", "S 101", "S 102", "S 103", "S 104", "S 105", "S 106", "S 107", "S 108", "S 109", "S 110", "S 111", "S 112", "S 113", "S 114", "S 115"], "O": ["S 41", "S 41a", "S 42", "S 42a", "S 43", "S 43a", "S 44", "S 44a", "S 45", "S 45a", "S 46", "S 46a", "S 47", "S 47a", "S 48", "S 48a", "S 49", "S 49a", "S 50", "S 50a", "S 51", "S 52", "S 53", "S 54", "S 55"], "O1-O10": ["406", "407", "408", "409", "410", "411", "412", "413", "414", "415"], "P": ["121", "122", "123", "124", "125"]};
 const EXAMPLE_BOXES = {"A": ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"], "B": ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12"], "K": ["K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9", "K10", "K11", "K12", "K13", "K14", "K15", "K16", "K17", "K18", "K19", "K20"]};
 let BOXES = null, EXAMPLE = false;
 
@@ -189,11 +190,11 @@ function parseList(text) {
   return Object.keys(out).length ? out : null;
 }
 function setupView(msg) {
-  const cur = storedBoxes();
+  const cur = storedBoxes() || { label: "Roudsea (built in)", boxes: ROUDSEA_BOXES };
   app.innerHTML = `<div class="head"><h1 style="font-size:26px">Box list</h1>${BOXES ? `<button class="btn" id="back">Back</button>` : ""}</div>
     <div class="sum">
-      <div style="font-size:16px">Box Check needs the list of boxes and the coupe each one is in. It stays on this phone.</div>
-      ${cur ? `<div class="done-note">Using: ${esc(cur.label)} (${countBoxes(cur.boxes)} boxes, ${Object.keys(cur.boxes).length} coupes)</div>` : ""}
+      <div style="font-size:16px">The Roudsea boxes are built in. Load a different list for another site, or after boxes are added or moved.</div>
+      <div class="done-note">Using: ${esc(cur.label)} (${countBoxes(cur.boxes)} boxes, ${Object.keys(cur.boxes).length} coupes)</div>
       ${msg ? `<div class="done-note" style="color:var(--danger)">${esc(msg)}</div>` : ""}
       <div style="color:var(--muted);font-size:14px">A CSV with two columns, <b>box</b> and <b>coupe</b>, one row per box. Save it to Files from email or OneDrive, then load it here.</div>
       <label class="who" for="paste">Or paste the list<textarea id="paste" rows="5" style="font:15px var(--sans);padding:10px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink)" placeholder="box,coupe&#10;S 1,K&#10;S 2,K"></textarea></label>
@@ -202,6 +203,7 @@ function setupView(msg) {
       <label class="btn go" style="padding:16px;text-align:center" for="file">Load box list (CSV)</label>
       <input id="file" type="file" accept=".csv,text/csv,text/plain" style="position:absolute;opacity:0;width:1px;height:1px">
       <div class="bar"><button class="btn" style="flex:1" id="usepaste">Use pasted list</button><button class="btn" style="flex:1" id="example">Try example boxes</button></div>
+      <button class="btn" id="builtin">Back to the Roudsea list</button>
     </div>`;
   if (BOXES) document.getElementById("back").onclick = grid;
   const take = (text, label) => {
@@ -212,6 +214,10 @@ function setupView(msg) {
   document.getElementById("file").onchange = e => { const f = e.target.files[0]; if (f) f.text().then(t => take(t, f.name)); };
   document.getElementById("usepaste").onclick = () => take(document.getElementById("paste").value, "pasted list");
   document.getElementById("example").onclick = () => { storeBoxes(EXAMPLE_BOXES, true, "example boxes"); grid(); toast("Example boxes: practice only"); };
+  document.getElementById("builtin").onclick = () => {
+    try { localStorage.removeItem(BOXES_KEY); } catch (e) {}
+    useBoxes(ROUDSEA_BOXES, false); grid(); toast("Using the Roudsea list");
+  };
 }
 
 function toast(msg, undo) {
@@ -481,9 +487,8 @@ function exportView() {
 
 // ---- Start: carry on with today's check, or deal with an old one that was never exported. --
 function start() {
-  const list = storedBoxes();
-  if (!list) { setupView(); return; }
-  useBoxes(list.boxes, list.example);
+  const list = storedBoxes();             // a loaded list wins; otherwise the built-in Roudsea boxes
+  if (list) useBoxes(list.boxes, list.example); else useBoxes(ROUDSEA_BOXES, false);
   const d = load();
   if (d && (Object.keys(d.rec || {}).length || Object.values(d.repair || {}).some(Boolean))) {
     Object.assign(S, { coupe: BOXES[d.coupe] ? d.coupe : S.coupe, rec: d.rec || {}, repair: d.repair || {}, started: d.started || null,
