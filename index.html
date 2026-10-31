@@ -136,6 +136,16 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 .btn.warn { background: var(--danger); color: var(--on-solid); }
 .stack { display: flex; flex-direction: column; gap: 8px; }
 @media (prefers-reduced-motion: reduce) { .a:active, .t:active, .btn:active { transform: none; } }
+/* Strips (31 Oct, v2): last time is quiet text on top; this time is a band below the number. */
+.t .s { background: none; text-align: center; font-size: 14px; padding: 7px 6px; }
+.t .s.was { color: var(--muted); font-weight: 700; }
+.t.done .s.was, .t.hold .s.was { color: inherit; opacity: .78; }
+.t .s.bee, .t.done .s.bee, .t.hold .s.bee { background: var(--danger); color: var(--on-solid); font-weight: 800; letter-spacing: .08em; opacity: 1; }
+.t .s.now { background: rgba(0, 0, 0, .2); font-weight: 800; letter-spacing: .02em; }
+.t.done .s.blank, .t.hold .s.blank, .t .s.blank { background: none; }
+/* Box screen panel: back, coupe and count in one style, finish */
+.ident { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: center; gap: 10px; }
+.ident b { font: 800 32px/1 var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
 </style>
 <div id="app"></div>
 <div class="sheet" id="sheet" hidden></div>
@@ -153,6 +163,18 @@ const COUPE_LOCK = {"salt":"cAQ4wHYi1rmHUtF+TWh3zw==","iv":"bNpMGVaONOoh52Vz","i
 const RESERVES = [{ id: "roudsea", name: "Roudsea" }, { id: "gait_barrows", name: "Gait Barrows" }];
 
 // Example history for the example boxes, so the "last time" markers have something to show. Not real records.
+// EXAMPLE "last time" history on Roudsea coupe K, so the tile style can be judged. Not real records.
+// Replace with the real last check per box (from the Box checks layer) before live use.
+const ROUDSEA_EXAMPLE_LAST = {
+  "S 2": { tag: "Empty", text: "Empty", when: "Sep" },
+  "S 3": { tag: "2 dorm", text: "2 dormice, both torpid", when: "Sep" },
+  "S 5": { tag: "BEES", bees: true, text: "Bees", when: "Sep" },
+  "S 8": { tag: "WM nest", text: "Wood mouse nest", when: "Sep" },
+  "S 11": { tag: "1 dorm", text: "1 dormouse, female, lactating", when: "Sep" },
+  "S 14": { tag: "Bird nest", text: "Bird nest", when: "Sep" },
+  "S 17": { tag: "Bat", text: "Bat", when: "Sep" },
+  "S 19": { tag: "DM nest", text: "Dormouse nest, no dormouse", when: "Sep" }
+};
 const EXAMPLE_LAST = {
   "K5": { tag: "2 dorm", text: "2 dormice, both torpid", when: "Sep" },
   "K12": { tag: "BEES", bees: true, text: "Bees", when: "Sep" },
@@ -215,7 +237,8 @@ function boxesFor(site) {
 }
 function useBoxes() {
   const st = storedBoxes(), b = boxesFor(S.site);
-  BOXES = b || {}; EXAMPLE = !!(st && st.example && b === st.boxes); LAST = EXAMPLE ? EXAMPLE_LAST : {};
+  BOXES = b || {}; EXAMPLE = !!(st && st.example && b === st.boxes);
+  LAST = EXAMPLE ? EXAMPLE_LAST : b === ROUDSEA_BOXES ? ROUDSEA_EXAMPLE_LAST : {};
   if (!BOXES[S.coupe]) S.coupe = Object.keys(BOXES)[0] || null;
 }
 const reserveName = id => (RESERVES.find(r => r.id === id) || {}).name || id;
@@ -312,20 +335,20 @@ function stopLocating() {
 let lastLocKey = "";
 function locState() {
   const list = boxesFor(S.site), sug = list ? coupeAt(here) : null;
-  const status = !navigator.geolocation ? "" : !here ? "📍 Finding you…" : here.error === "off" ? "📍 Location is off for this app" :
-    here.error ? "📍 No location fix yet" : !coupeMap() ? `📍 ±${here.acc} m · coupe map locked` :
-    sug ? "" : `📍 ±${here.acc} m · not in a coupe`;
+  const status = !navigator.geolocation ? "" : !here ? "Finding you…" : here.error === "off" ? "Location is off for this app" :
+    here.error ? "No location fix yet" : !coupeMap() ? `±${here.acc} m · coupe map locked` :
+    sug ? "" : `±${here.acc} m · not in a coupe`;
   return { list, sug, status };
 }
 function coupes() {
   inCard = false; save();
   const { list, sug, status } = locState();
   lastLocKey = JSON.stringify([S.site, sug, status]);
-  let h = `<div class="bar"><button class="btn site" id="site">${esc(reserveName(S.site))} ▾</button><span style="flex:1"></span>` +
+  let h = `<div class="bar"><button class="btn site" id="site">${esc(reserveName(S.site))}</button><span style="flex:1"></span>` +
     `<button class="demo" id="boxes" aria-label="Box list">${EXAMPLE ? "EXAMPLE" : "BOXES"}</button></div>`;
-  if (sug) h += `<button class="here" id="gohere"><span class="l1">📍 ${sug.dist ? `Near coupe <b>${esc(sug.id)}</b>, ${sug.dist} m` : `You're in coupe <b>${esc(sug.id)}</b>`}</span><span>Tap to start · ±${here.acc} m</span></button>`;
+  if (sug) h += `<button class="here" id="gohere"><span class="l1">${sug.dist ? `Near coupe <b>${esc(sug.id)}</b>, ${sug.dist} m` : `You're in coupe <b>${esc(sug.id)}</b>`}</span><span>Tap to start · ±${here.acc} m</span></button>`;
   else if (status) h += `<div class="loc">${status}</div>`;
-  if (list && !coupeMap() && S.site === "roudsea") h += `<button class="btn" id="unlockbtn">🔒 Unlock the coupe map for 📍 suggestions</button>`;
+  if (list && !coupeMap() && S.site === "roudsea") h += `<button class="btn" id="unlockbtn">Unlock coupe map</button>`;
   if (!list) {
     h += `<div class="sum"><div style="font-size:20px;font-weight:700">No ${esc(reserveName(S.site))} boxes on this phone yet.</div>` +
       `<div style="color:var(--muted)">Load a ${esc(reserveName(S.site))} box list from the BOXES button.</div></div>`;
@@ -337,9 +360,9 @@ function coupes() {
       const fin = S.finished[k] || (done && done === bx.length);
       const cls = (fin ? " done" : done ? " part" : "") + (isSug ? " sug" : "");
       h += `<button class="t${cls}" data-c="${esc(k)}" aria-label="Coupe ${esc(k)}">` +
-        `<span class="s${isSug || wait ? " here-s" : " blank"}">${isSug ? "📍 HERE" : wait ? `${wait} queued` : "&nbsp;"}</span>` +
+        `<span class="s${isSug || wait ? " here-s" : " blank"}">${isSug ? "HERE" : wait ? `${wait} queued` : "&nbsp;"}</span>` +
         `<span class="n${k.length > 2 ? " long" : ""}">${esc(k)}</span>` +
-        `<span class="s">${fin && S.finished[k] ? "✓ " : ""}${done}/${bx.length}</span></button>`;
+        `<span class="s">${done}/${bx.length}</span></button>`;
     }
     h += `</div>`;
   }
@@ -397,7 +420,7 @@ function setupView(msg) {
     <div class="sum">
       <div style="font-size:16px">The Roudsea boxes are built in. Load a different list for another site, or after boxes are added or moved.</div>
       ${cur ? `<div class="done-note">${esc(reserveName(S.site))}: ${esc(cur.label)} (${countBoxes(cur.boxes)} boxes, ${Object.keys(cur.boxes).length} coupes)</div>` : `<div class="done-note" style="color:var(--danger)">No ${esc(reserveName(S.site))} boxes yet</div>`}
-      <div class="done-note" style="color:${cm ? "var(--green)" : "var(--muted)"}">Coupe map: ${cm ? `${cm.length} coupes, for the 📍 suggestion` : "none (load one to get the 📍 suggestion)"}</div>
+      <div class="done-note" style="color:${cm ? "var(--green)" : "var(--muted)"}">Coupe map: ${cm ? `${cm.length} coupes, for the suggestion` : "none (load one to get the suggestion)"}</div>
       ${msg ? `<div class="done-note" style="color:var(--danger)">${esc(msg)}</div>` : ""}
       <div style="color:var(--muted);font-size:14px">A CSV with two columns, <b>box</b> and <b>coupe</b>, one row per box. Save it to Files from email or OneDrive, then load it here.</div>
       <label class="who" for="paste">Or paste the list<textarea id="paste" rows="5" style="font:15px var(--sans);padding:10px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink)" placeholder="box,coupe&#10;S 1,K&#10;S 2,K"></textarea></label>
@@ -449,7 +472,7 @@ function setRec(label, rec, msg) {
   if (!S.date) S.date = today();
   S.exported = null;           // anything new means the last export is out of date
   grid();
-  if (msg) toast(msg, () => { if (before) S.rec[label] = before; else delete S.rec[label]; grid(); });
+  // No splash: going back into a box and answering again replaces the record.
 }
 
 function grid() {
@@ -463,10 +486,9 @@ function grid() {
   for (const l of list) {
     const r = S.rec[l], lt = LAST[l];
     const cls = (r ? (r.state === "wait" ? "hold" : "done") : "") + (S.repair[l] ? " fix" : "");
-    const today = !r ? "" : r.state === "wait" ? "Queued" : "✓ " + (r.state === "clear" ? "Empty" : r.state === "dorm" ? `${r.mice.length} dorm` : SHORT[r.what] || r.what);
-    const top = lt ? `<span class="s${lt.bees ? " bee" : ""}">${lt.bees ? "⚠ " : "<em>Last</em> "}${esc(lt.tag)}</span>` : `<span class="s blank">&nbsp;</span>`;
-    const bot = S.repair[l] ? `<span class="s rp">⚒ ${esc(repLabel(S.repair[l]))}</span>`
-      : today ? `<span class="s">${esc(today)}</span>` : `<span class="s blank">&nbsp;</span>`;
+    const today = !r || r.state === "clear" ? "" : r.state === "wait" ? "Queued" : r.state === "dorm" ? `${r.mice.length} dorm` : SHORT[r.what] || r.what;
+    const top = lt ? `<span class="s was${lt.bees ? " bee" : ""}">${esc(lt.tag)}</span>` : `<span class="s blank">&nbsp;</span>`;
+    const bot = today ? `<span class="s now">${esc(today)}</span>` : `<span class="s blank">&nbsp;</span>`;
     h += `<button class="t ${cls}${/[a-e]$/.test(l) ? " sfx" : ""}" data-b="${esc(l)}" aria-label="Box ${esc(l)}">` +
       top + `<span class="n${short(l).length >= 4 ? " d4" : short(l).length === 3 ? " d3" : ""}">${esc(short(l))}</span>` + bot + `</button>`;
   }
@@ -476,22 +498,20 @@ function grid() {
     left ? `${left} to do` : ""].filter(Boolean).join(" · ") || "all marked";
   h += `<div class="panel">` +
     (waiting.length ? `<div class="qrow"><span class="lab">Queue</span>` + waiting.map(l => `<button data-b="${esc(l)}">${esc(short(l))}</button>`).join("") + `</div>` : "") +
-    `<div class="prow"><div class="letter"><b>${esc(S.coupe)}</b><span class="lab">Coupe</span></div>` +
-    `<div class="stat"><b>${done} of ${list.length} done</b><span>${notes}</span></div>` +
+    `<div class="prow"><button class="btn" id="tocoupes">Back</button>` +
+    `<div class="ident" aria-label="Coupe ${esc(S.coupe)}, ${done} of ${list.length} done"><b>${esc(S.coupe)}</b><b>${done}/${list.length}</b></div>` +
     `<button class="btn go" id="finish">Finish coupe</button></div></div>`;
   app.innerHTML = h;
   // Keep every strip on one line: step the text down until it fits, ellipsis as a last resort.
   const fit = s => { s.style.fontSize = ""; for (let f = 14; f > 11 && s.scrollWidth > s.clientWidth; f--) s.style.fontSize = (f - 1) + "px"; };
   const strips = [...app.querySelectorAll(".t .s")];
   strips.forEach(fit);
-  // If any "Last" label won't fit, drop it on every tile in this coupe so they all read the same way.
-  if (strips.some(s => s.querySelector("em") && s.scrollWidth > s.clientWidth))
-    strips.forEach(s => { const em = s.querySelector("em"); if (em) { em.remove(); fit(s); } });
   app.querySelectorAll("[data-b]").forEach(b => b.onclick = () => {
     box = b.dataset.b; const r = S.rec[box];
     r && r.state === "wait" ? inside() : call();
   });
   document.getElementById("finish").onclick = () => finishCoupe(list, waiting);
+  document.getElementById("tocoupes").onclick = coupes;
 }
 
 // Finish coupe. Boxes nobody marked get a reminder; with positive recording they count as empty.
@@ -504,12 +524,10 @@ function finishCoupe(list, waiting) {
   };
   if (!unmarked.length) return done(waiting.length ? `Coupe ${S.coupe} finished, ${waiting.length} still queued` : null);
   const sh = document.getElementById("sheet");
-  const qtext = waiting.length ? ` ${waiting.length} queued box${waiting.length === 1 ? " stays" : "es stay"} queued.` : "";
   sh.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="sh-t">
     <h2 id="sh-t">${unmarked.length} box${unmarked.length === 1 ? "" : "es"} not marked</h2>
-    <p>Positive recording: anything you didn't mark was empty.${qtext}</p>
-    <button class="btn go" id="sh-empty">Mark ${unmarked.length} empty and finish</button>
-    <button class="btn" id="sh-back">Keep checking</button></div>`;
+    <button class="btn go" id="sh-empty">Mark ${unmarked.length} as empty, finish coupe</button>
+    <button class="btn" id="sh-back">Go back</button></div>`;
   sh.hidden = false;
   document.getElementById("sh-back").onclick = close;
   document.getElementById("sh-empty").onclick = () => {
@@ -531,7 +549,6 @@ function repairMenu() {
     if (v) S.repair[box] = v; else delete S.repair[box];
     if (!S.date) S.date = today();
     S.exported = null; save();
-    toast(v ? `${short(box)}: repair, ${v.toLowerCase()}` : `${short(box)}: no repair`);
     back();
   };
   const opts = REPAIRS.map(([t, c]) => [t, c, set(t)]);
@@ -541,7 +558,7 @@ function repairMenu() {
 function head(backLabel) {
   const lt = LAST[box];
   return `<div class="head"><h1>Box ${esc(short(box))}</h1>` +
-    `<button class="rep${S.repair[box] ? " on" : ""}" id="rep">${S.repair[box] ? "⚒ " + esc(repLabel(S.repair[box])) : "Needs repair"}</button>` +
+    `<button class="rep${S.repair[box] ? " on" : ""}" id="rep">${S.repair[box] ? "Repair: " + esc(repLabel(S.repair[box])) : "Needs repair"}</button>` +
     `<button class="btn" id="back">${backLabel || "Back"}</button></div>` +
     (lt ? `<div class="last">Last time: ${esc(lt.text)}<em>${esc(lt.when)} check · example</em></div>` : "");
 }
@@ -636,7 +653,7 @@ function summary() {
     <div class="sum">
       <div style="color:var(--muted);font-size:14px">${esc(reserveName(S.site))} · ${nice(S.date || today())} · ${S.started || "–"} to ${now()}</div>
       <label class="who" for="surveyors">Who checked (licence holder first)<input id="surveyors" autocomplete="off" value="${esc(S.surveyors)}" placeholder="e.g. Tracy, Nick"></label>
-      ${S.exported ? `<div class="done-note">✓ Exported at ${esc(S.exported)}</div>` : ""}
+      ${S.exported ? `<div class="done-note">Exported at ${esc(S.exported)}</div>` : ""}
       <div class="stats"><div><b>${checked.length}</b>boxes checked</div><div><b style="color:var(--dorm)">${nMice}</b>dormice</div><div><b>${repairs.length}</b>repairs</div></div>
       ${waiting.length ? `<div><h2>Queued but never checked</h2><ul class="list">${li(waiting, l => `Box ${esc(l)}`, "red")}</ul></div>` : ""}
       <div><h2>Dormice</h2><ul class="list">${li(dorms, ([l, r]) => `<b>${esc(l)}</b>, ${r.time}: ` + r.mice.map(x => [x.Sex, x.Weight, x.Status, x.Breeding, x.Age].filter(Boolean).join(", ") || "no details").map(esc).join(" · "))}</ul></div>
