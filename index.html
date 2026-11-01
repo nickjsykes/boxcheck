@@ -708,7 +708,8 @@ function armNewDay(btn) {
 }
 
 // ---- Export: one row per box, or per dormouse, in NDMP sheet order. ------------------------
-const COLS = ["site", "check_date", "coupe", "surveyors", "start_time", "end_time", "box", "box_time", "occupied", "contents",
+// Column names = the WildlifeChecks fields in ArcGIS, so Append maps every column by itself.
+const COLS = ["site", "check_date", "coupe", "surveyors", "start_time", "end_time", "box_ref", "box_time", "occupied", "contents",
   "dm_nest", "dm_count", "dormouse_no", "sex", "weight_g", "status", "breeding", "age", "mouse_id", "box_condition", "notes"];
 const CODE = {
   Sex: { Male: "M", Female: "F", Unknown: "U" },
@@ -724,8 +725,8 @@ function rows(end) {
   const out = [];
   for (const l of labels) {
     const r = S.rec[l];
-    const base = { site: reserveName(S.site), check_date: S.date || today(), coupe: coupeOf(l), surveyors: S.surveyors.trim(),
-      start_time: S.started || "", end_time: end, box: l, box_time: r ? r.time : "",
+    const base = { site: S.site, check_date: S.date || today(), coupe: coupeOf(l), surveyors: S.surveyors.trim(),
+      start_time: S.started || "", end_time: end, box_ref: l, box_time: r ? r.time : "",
       box_condition: S.repair[l] ? "repair: " + repLabel(S.repair[l]).toLowerCase() : "fine" };
     if (!r) out.push({ ...base, notes: "repair noted, box not recorded" });
     else if (r.state === "wait") out.push({ ...base, occupied: "queued", notes: "queued, not checked" });
