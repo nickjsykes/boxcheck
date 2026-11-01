@@ -460,29 +460,33 @@ function toast(msg, undo) {
 }
 document.getElementById("undo").onclick = () => { if (undoFn) undoFn(); document.getElementById("toast").hidden = true; };
 
-// A short tick so you know a box saved without looking: high for a result, low for Queue,
-// two for a finished coupe. iPhones go quiet when the silent switch is on.
+// A short sound so you know a box saved without looking: low for Empty, high for Occupied, two low
+// blips for Queue, two rising for a finished coupe. A dormouse gets a soft music-box chime: sine
+// tones at a quarter of the volume, because there's a dormouse in the box.
+// iPhones go quiet when the silent switch is on.
 let actx = null;
 function tick(kind) {
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === "suspended") actx.resume();
-    const beep = (at, freq) => {
+    const beep = (at, freq, wave = "square", vol = 0.2, len = 0.06) => {
       const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + at;
-      o.type = "square"; o.frequency.setValueAtTime(freq, t);
+      o.type = wave; o.frequency.setValueAtTime(freq, t);
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.2, t + 0.004);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
-      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + 0.07);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + len + 0.01);
     };
-    if (kind === "queue") beep(0, 520);
+    if (kind === "clear") beep(0, 520);
+    else if (kind === "queue") { beep(0, 520); beep(0.09, 520); }
+    else if (kind === "dorm") { beep(0, 988, "sine", 0.05, 0.35); beep(0.12, 1319, "sine", 0.05, 0.35); beep(0.24, 1568, "sine", 0.05, 0.5); }
     else if (kind === "finish") { beep(0, 1320); beep(0.11, 1760); }
     else beep(0, 1320);
   } catch (e) { /* no sound is fine */ }
 }
 function setRec(label, rec, msg) {
   const before = S.rec[label];
-  if (rec) { rec.time = now(); S.rec[label] = rec; tick(rec.state === "wait" ? "queue" : "save"); } else delete S.rec[label];
+  if (rec) { rec.time = now(); S.rec[label] = rec; tick(rec.state === "wait" ? "queue" : rec.state); } else delete S.rec[label];
   if (!S.started) S.started = now();
   if (!S.date) S.date = today();
   S.exported = null;           // anything new means the last export is out of date
