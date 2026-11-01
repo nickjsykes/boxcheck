@@ -170,18 +170,6 @@ const COUPE_LOCK = {"salt":"cAQ4wHYi1rmHUtF+TWh3zw==","iv":"bNpMGVaONOoh52Vz","i
 const RESERVES = [{ id: "roudsea", name: "Roudsea" }, { id: "gait_barrows", name: "Gait Barrows" }];
 
 // Example history for the example boxes, so the "last time" markers have something to show. Not real records.
-// EXAMPLE "last time" history on Roudsea coupe K, so the tile style can be judged. Not real records.
-// Replace with the real last check per box (from the Box checks layer) before live use.
-const ROUDSEA_EXAMPLE_LAST = {
-  "S 2": { tag: "Empty", text: "Empty", when: "Sep" },
-  "S 3": { tag: "2 dorm", text: "2 dormice, both torpid", when: "Sep" },
-  "S 5": { tag: "BEES", bees: true, text: "Bees", when: "Sep" },
-  "S 8": { tag: "WM nest", text: "Wood mouse nest", when: "Sep" },
-  "S 11": { tag: "1 dorm", text: "1 dormouse, female, lactating", when: "Sep" },
-  "S 14": { tag: "Bird nest", text: "Bird nest", when: "Sep" },
-  "S 17": { tag: "Bat", text: "Bat", when: "Sep" },
-  "S 19": { tag: "DM nest", text: "Dormouse nest, no dormouse", when: "Sep" }
-};
 const EXAMPLE_LAST = {
   "K5": { tag: "2 dorm", text: "2 dormice, both torpid", when: "Sep" },
   "K12": { tag: "BEES", bees: true, text: "Bees", when: "Sep" },
@@ -207,7 +195,7 @@ const BREED = {
   Unknown: [["Non-breeding", C.spruce], ["Unknown", C.grey]]
 };
 
-const S = { site: "roudsea", coupe: "K", rec: {}, repair: {}, finished: {}, started: null, date: null, surveyors: "", exported: null };
+const S = { site: "roudsea", coupe: "K", rec: {}, repair: {}, finished: {}, started: null, date: null, holder: "", assistants: "", exported: null };
 let box = null, mice = [], cur = 0, undoFn = null, toastT = null, inCard = false;
 const app = document.getElementById("app");
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -227,7 +215,7 @@ function load() {
 }
 function wipe() {
   try { localStorage.removeItem(KEY); } catch (e) {}
-  Object.assign(S, { rec: {}, repair: {}, finished: {}, started: null, date: null, surveyors: "", exported: null });
+  Object.assign(S, { rec: {}, repair: {}, finished: {}, started: null, date: null, holder: "", assistants: "", exported: null });
   box = null; mice = []; cur = 0; inCard = false;
 }
 const hasData = () => Object.keys(S.rec).length > 0 || Object.values(S.repair).some(Boolean);
@@ -245,7 +233,7 @@ function boxesFor(site) {
 function useBoxes() {
   const st = storedBoxes(), b = boxesFor(S.site);
   BOXES = b || {}; EXAMPLE = !!(st && st.example && b === st.boxes);
-  LAST = EXAMPLE ? EXAMPLE_LAST : b === ROUDSEA_BOXES ? ROUDSEA_EXAMPLE_LAST : {};
+  LAST = EXAMPLE ? EXAMPLE_LAST : {};
   if (!BOXES[S.coupe]) S.coupe = Object.keys(BOXES)[0] || null;
 }
 const reserveName = id => (RESERVES.find(r => r.id === id) || {}).name || id;
@@ -679,7 +667,8 @@ function summary() {
   app.innerHTML = `<div class="head"><h1 style="font-size:26px">Day summary</h1><button class="btn" id="back">Back</button></div>
     <div class="sum">
       <div style="color:var(--muted);font-size:14px">${esc(reserveName(S.site))} · ${nice(S.date || today())} · ${S.started || "–"} to ${now()}</div>
-      <label class="who" for="surveyors">Who checked (licence holder first)<input id="surveyors" autocomplete="off" value="${esc(S.surveyors)}" placeholder="e.g. Tracy, Nick"></label>
+      <label class="who" for="holder">Licence holder<input id="holder" autocomplete="name" value="${esc(S.holder)}" placeholder="e.g. Tracy"></label>
+      <label class="who" for="assistants">Assistants<input id="assistants" autocomplete="off" value="${esc(S.assistants)}" placeholder="e.g. Nick, Mike"></label>
       ${S.exported ? `<div class="done-note">Exported at ${esc(S.exported)}</div>` : ""}
       <div class="stats"><div><b>${checked.length}</b>boxes checked</div><div><b style="color:var(--dorm)">${nMice}</b>dormice</div><div><b>${repairs.length}</b>repairs</div></div>
       ${waiting.length ? `<div><h2>Queued but never checked</h2><ul class="list">${li(waiting, l => `Box ${esc(l)}`, "red")}</ul></div>` : ""}
@@ -690,7 +679,8 @@ function summary() {
     </div>
     <div class="bar"><button class="btn go" style="flex:2;padding:16px" id="exp">Export CSV</button><button class="btn" style="flex:1" id="newday">New day</button></div>`;
   document.getElementById("back").onclick = grid;
-  document.getElementById("surveyors").oninput = e => { S.surveyors = e.target.value; save(); };
+  document.getElementById("holder").oninput = e => { S.holder = e.target.value; save(); };
+  document.getElementById("assistants").oninput = e => { S.assistants = e.target.value; save(); };
   document.getElementById("exp").onclick = exportView;
   armNewDay(document.getElementById("newday"));
 }
@@ -709,7 +699,7 @@ function armNewDay(btn) {
 
 // ---- Export: one row per box, or per dormouse, in NDMP sheet order. ------------------------
 // Column names = the WildlifeChecks fields in ArcGIS, so Append maps every column by itself.
-const COLS = ["site", "check_date", "coupe", "surveyors", "start_time", "end_time", "box_ref", "box_time", "occupied", "contents",
+const COLS = ["site", "check_date", "coupe", "licence_holder", "assistants", "start_time", "end_time", "box_ref", "box_time", "occupied", "contents",
   "dm_nest", "dm_count", "dormouse_no", "sex", "weight_g", "status", "breeding", "age", "mouse_id", "box_condition", "notes"];
 const CODE = {
   Sex: { Male: "M", Female: "F", Unknown: "U" },
@@ -725,7 +715,7 @@ function rows(end) {
   const out = [];
   for (const l of labels) {
     const r = S.rec[l];
-    const base = { site: S.site, check_date: S.date || today(), coupe: coupeOf(l), surveyors: S.surveyors.trim(),
+    const base = { site: S.site, check_date: S.date || today(), coupe: coupeOf(l), licence_holder: S.holder.trim(), assistants: S.assistants.trim(),
       start_time: S.started || "", end_time: end, box_ref: l, box_time: r ? r.time : "",
       box_condition: S.repair[l] ? "repair: " + repLabel(S.repair[l]).toLowerCase() : "fine" };
     if (!r) out.push({ ...base, notes: "repair noted, box not recorded" });
@@ -754,7 +744,7 @@ function exportView() {
   app.innerHTML = `<div class="head"><h1 style="font-size:26px">Export</h1><button class="btn" id="back">Back</button></div>
     <div class="sum">
       <div style="font-size:15px"><b>${rs.length}</b> rows · ${esc(name)}</div>
-      ${S.surveyors.trim() ? "" : `<div class="done-note" style="color:var(--danger)">Who checked is blank. Go back and add it first.</div>`}
+      ${S.holder.trim() ? "" : `<div class="done-note" style="color:var(--danger)">Licence holder is blank. Go back and add it first.</div>`}
       <div class="prev"><table><tr>${COLS.map(c => `<th>${c}</th>`).join("")}</tr>${rs.slice(0, 30).map(r => `<tr>${COLS.map(c => `<td>${esc(r[c] ?? "")}</td>`).join("")}</tr>`).join("")}</table></div>
       <div style="color:var(--muted);font-size:13px">One row per box, or per dormouse, in NDMP sheet order. On a desk: ArcGIS Online → Box checks → Update data → Append.</div>
     </div>
@@ -795,7 +785,11 @@ function start() {
   const d = d0;
   if (d && (Object.keys(d.rec || {}).length || Object.values(d.repair || {}).some(Boolean))) {
     Object.assign(S, { site: d.site || S.site, coupe: BOXES[d.coupe] ? d.coupe : S.coupe, rec: d.rec || {}, repair: d.repair || {}, finished: d.finished || {}, started: d.started || null,
-      date: d.date || null, surveyors: d.surveyors || "", exported: d.exported || null });
+      date: d.date || null, holder: d.holder || "", assistants: d.assistants || "", exported: d.exported || null });
+    if (d.surveyors && !d.holder) {  // a day saved before the split: first name is the licence holder
+      const names = d.surveyors.split(",").map(x => x.trim()).filter(Boolean);
+      S.holder = names[0] || ""; S.assistants = names.slice(1).join(", ");
+    }
     if (S.date && S.date !== today()) {
       if (S.exported) { wipe(); coupes(); return; }
       const n = Object.keys(S.rec).length;
