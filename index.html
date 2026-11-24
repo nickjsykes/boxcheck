@@ -153,6 +153,15 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 .ident > div { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .ident b { font: 800 30px/1 var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
 .ident b.long { font-size: 18px; line-height: 30px; }
+/* Who's out today: names as buttons so the spelling never drifts. */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 2px solid var(--line); background: var(--card); border-radius: 999px; padding: 12px 18px; font: 700 18px var(--sans); }
+.chip.on { background: var(--green); border-color: var(--green); color: var(--on-solid); }
+.chip .x { margin-left: 8px; color: var(--danger); font-weight: 800; }
+.addname { display: flex; gap: 8px; }
+.addname input { flex: 1; min-width: 0; font: 600 18px var(--sans); padding: 10px 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--ink); }
+.btn:disabled { opacity: .5; }
+.row small { display: block; font-size: 15px; font-weight: 500; color: var(--muted); margin-top: 3px; }
 </style>
 <div id="app"></div>
 <div class="sheet" id="sheet" hidden></div>
@@ -195,7 +204,7 @@ const BREED = {
   Unknown: [["Non-breeding", C.spruce], ["Unknown", C.grey]]
 };
 
-const S = { site: "roudsea", coupe: "K", rec: {}, repair: {}, finished: {}, started: null, date: null, holder: "", assistants: "", exported: null };
+const S = { site: "roudsea", coupe: "K", rec: {}, repair: {}, finished: {}, started: null, date: null, holder: "", assistants: "", team: [], teamSet: false, lastHandler: "", exported: null };
 let box = null, mice = [], cur = 0, undoFn = null, toastT = null, inCard = false;
 const app = document.getElementById("app");
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -215,11 +224,83 @@ function load() {
 }
 function wipe() {
   try { localStorage.removeItem(KEY); } catch (e) {}
-  Object.assign(S, { rec: {}, repair: {}, finished: {}, started: null, date: null, holder: "", assistants: "", exported: null });
+  Object.assign(S, { rec: {}, repair: {}, finished: {}, started: null, date: null, holder: "", assistants: "", team: [], teamSet: false, lastHandler: "", exported: null });
   box = null; mice = []; cur = 0; inCard = false;
 }
 const hasData = () => Object.keys(S.rec).length > 0 || Object.values(S.repair).some(Boolean);
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+
+// ---- Who's out today. Names are typed once and kept on the phone, so "how many dormice have I
+// handled?" can be counted from the exports: the same person is always the same spelling. ---------
+const PEOPLE_KEY = "boxcheck.people.v1";
+function people() {
+  try { const d = JSON.parse(localStorage.getItem(PEOPLE_KEY) || "null"); if (d && Array.isArray(d.names)) return d; } catch (e) {}
+  return { names: [], holder: "" };
+}
+function savePeople(p) { try { localStorage.setItem(PEOPLE_KEY, JSON.stringify(p)); } catch (e) {} }
+function addName(p, raw) {
+  const n = String(raw || "").trim().replace(/\s+/g, " ");
+  if (!n) return null;
+  const hit = p.names.find(x => x.toLowerCase() === n.toLowerCase());
+  if (hit) return hit;
+  p.names.push(n); p.names.sort((a, b) => a.localeCompare(b));
+  return n;
+}
+const handlers = () => [S.holder, ...S.team].filter(Boolean);
+const defaultHandler = () => handlers().includes(S.lastHandler) ? S.lastHandler : S.holder;
+function teamView(then) {
+  stopLocating();
+  const p = people();
+  let holder = S.holder || (p.names.includes(p.holder) ? p.holder : "");
+  const team = new Set(S.team.filter(n => n !== holder));
+  let editing = false;
+  const draw = () => {
+    const chip = (n, on, attr) => `<button class="chip${on && !editing ? " on" : ""}" ${attr}="${esc(n)}">${esc(n)}${editing ? `<span class="x">✕</span>` : ""}</button>`;
+    const others = p.names.filter(n => n !== holder);
+    app.innerHTML = `<div class="head"><h1 style="font-size:26px">Who's out today?</h1>${S.teamSet ? `<button class="btn" id="back">Back</button>` : ""}</div>
+      <div class="sum">
+        <div><h2>Licence holder</h2><div class="chips">${p.names.length ? p.names.map(n => chip(n, n === holder, "data-h")).join("") : `<span style="color:var(--muted);font-size:16px">Add the first name below.</span>`}</div></div>
+        <div><h2>Assistants (tap everyone who's here)</h2><div class="chips">${others.length ? others.map(n => chip(n, team.has(n), "data-a")).join("") : `<span style="color:var(--muted);font-size:16px">None yet. Add them below.</span>`}</div></div>
+        <form class="addname" id="addf"><input id="newname" autocomplete="off" autocapitalize="words" placeholder="Add a name"><button class="btn" type="submit">Add</button></form>
+        <div style="color:var(--muted);font-size:14px">Type each person once and they stay on this phone. Use their full name, the same way every time: it's how dormice handled get counted.</div>
+        ${p.names.length ? `<button class="demo" id="edit" style="align-self:flex-start">${editing ? "DONE EDITING" : "REMOVE A NAME"}</button>` : ""}
+      </div>
+      <button class="btn go" style="padding:18px;font-size:20px" id="startbtn"${holder && !editing ? "" : " disabled"}>${editing ? "Tap a name to remove it" : holder ? (S.teamSet ? "Save" : "Start") : "Pick the licence holder"}</button>`;
+    const back = document.getElementById("back");
+    if (back) back.onclick = then;
+    app.querySelectorAll("[data-h],[data-a]").forEach(b => b.onclick = () => {
+      const n = b.dataset.h || b.dataset.a;
+      if (editing) {
+        p.names = p.names.filter(x => x !== n); team.delete(n); if (holder === n) holder = "";
+        savePeople(p); return draw();
+      }
+      if (b.dataset.h) { holder = n; team.delete(n); }
+      else team.has(n) ? team.delete(n) : team.add(n);
+      draw();
+    });
+    document.getElementById("addf").onsubmit = e => {
+      e.preventDefault();
+      const n = addName(p, document.getElementById("newname").value);
+      if (!n) return;
+      savePeople(p);
+      if (!holder) holder = n; else if (n !== holder) team.add(n);
+      draw();
+    };
+    const ed = document.getElementById("edit");
+    if (ed) ed.onclick = () => { editing = !editing; draw(); };
+    document.getElementById("startbtn").onclick = () => {
+      if (!holder || editing) return;
+      S.holder = holder;
+      S.team = p.names.filter(n => team.has(n));
+      S.assistants = S.team.join(", ");
+      S.teamSet = true;
+      if (!S.date) S.date = today();
+      p.holder = holder; savePeople(p);
+      save(); then();
+    };
+  };
+  draw();
+}
 
 // ---- The box list: loaded once from a CSV (box, coupe) and kept on the phone. -------------
 const BOXES_KEY = "boxcheck.boxes.v1";
@@ -340,7 +421,7 @@ function coupes() {
   const { list, sug, status } = locState();
   lastLocKey = JSON.stringify([S.site, sug, status]);
   let h = `<div class="bar"><button class="btn site" id="site">${esc(reserveName(S.site))}</button><span style="flex:1"></span>` +
-    `<button class="demo" id="boxes" aria-label="Box list">${EXAMPLE ? "EXAMPLE" : "BOXES"}</button></div>`;
+    `<button class="demo" id="team" aria-label="Who's out today">TEAM</button><button class="demo" id="boxes" aria-label="Box list">${EXAMPLE ? "EXAMPLE" : "BOXES"}</button></div>`;
   if (sug) h += `<button class="here" id="gohere"><span class="l1">${sug.dist ? `Near coupe <b>${esc(sug.id)}</b>, ${sug.dist} m` : `You're in coupe <b>${esc(sug.id)}</b>`}</span><span>Tap to start · ±${here.acc} m</span></button>`;
   else if (status) h += `<div class="loc">${status}</div>`;
   if (list && !coupeMap() && S.site === "roudsea") h += `<button class="btn" id="unlockbtn">Unlock coupe map</button>`;
@@ -372,6 +453,7 @@ function coupes() {
     S.site = RESERVES[(i + 1) % RESERVES.length].id; siteChosen = true; useBoxes(); coupes();
   };
   document.getElementById("boxes").onclick = () => setupView();
+  document.getElementById("team").onclick = () => teamView(coupes);
   document.getElementById("finish").onclick = summary;
   if (sug) document.getElementById("gohere").onclick = () => { S.coupe = sug.id; grid(); };
   const ub = document.getElementById("unlockbtn");
@@ -624,13 +706,17 @@ function nest() {
 
 function card() {
   inCard = true; save(); screen = card;      // a half-filled dormouse survives a flat battery too
-  const m = mice[cur];
+  const m = mice[cur], hs = handlers();
+  if (!m.Handler && hs.length) m.Handler = defaultHandler();
   app.innerHTML = head("Cancel") + `<div class="q" style="font-size:22px">Dormouse ${cur + 1}${mice.length > 1 ? ` of ${mice.length}` : ""}</div><div class="rows">` +
+    (hs.length ? `<button class="row" id="hand">Handled by<b>${esc(m.Handler || "")}</b></button>` : "") +
     FIELDS.map((f, i) => `<button class="row" data-f="${i}">${f.name}${m[f.name] ? `<b>${esc(m[f.name])}</b>` : `<i>tap</i>`}</button>`).join("") +
     (mice.length > 1 ? `<div class="foot" style="justify-content:center;gap:6px">` + mice.map((_, i) => `<button class="btn${i === cur ? " go" : ""}" data-m="${i}">${i + 1}</button>`).join("") + `</div>` : "") +
     `</div><div class="bar"><button class="btn" style="flex:1;padding:16px" id="add">+ Another dormouse</button><button class="btn go" style="flex:1;padding:16px" id="done">Box done</button></div>`;
   wireHead(call);
   app.querySelectorAll("[data-f]").forEach(b => b.onclick = () => field(FIELDS[+b.dataset.f]));
+  const hb = document.getElementById("hand");
+  if (hb) hb.onclick = () => ask("Who's handling?", hs.map(n => [n, n === S.holder ? C.spruce : C.slate, () => { m.Handler = n; S.lastHandler = n; card(); }]), card);
   app.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { cur = +b.dataset.m; card(); });
   document.getElementById("add").onclick = () => { mice.push({}); cur = mice.length - 1; card(); };
   document.getElementById("done").onclick = () => setRec(box, { state: "dorm", mice: mice.map(x => ({ ...x })) }, `${short(box)}: ${mice.length} ${mice.length === 1 ? "dormouse" : "dormice"} saved`);
@@ -667,24 +753,26 @@ function summary() {
   const waiting = all.filter(([, r]) => r.state === "wait").map(([l]) => l);
   const repairs = Object.keys(S.repair).filter(l => S.repair[l]);
   const other = all.filter(([, r]) => r.state === "other");
+  const tally = {};
+  dorms.forEach(([, r]) => r.mice.forEach(x => { if (x.Handler) tally[x.Handler] = (tally[x.Handler] || 0) + 1; }));
+  const handled = Object.entries(tally).sort((a, b) => b[1] - a[1]);
   const li = (arr, f, cls) => arr.length ? arr.map(x => `<li${cls ? ` class="${cls}"` : ""}>${f(x)}</li>`).join("") : `<li>None</li>`;
   app.innerHTML = `<div class="head"><h1 style="font-size:26px">Day summary</h1><button class="btn" id="back">Back</button></div>
     <div class="sum">
       <div style="color:var(--muted);font-size:14px">${esc(reserveName(S.site))} · ${nice(S.date || today())} · ${S.started || "–"} to ${now()}</div>
-      <label class="who" for="holder">Licence holder<input id="holder" autocomplete="name" value="${esc(S.holder)}" placeholder="e.g. Tracy"></label>
-      <label class="who" for="assistants">Assistants<input id="assistants" autocomplete="off" value="${esc(S.assistants)}" placeholder="e.g. Nick, Mike"></label>
+      <button class="row" id="who"><span>${S.holder ? `${esc(S.holder)}<small>${S.team.length ? "with " + esc(S.team.join(", ")) : "no assistants"}</small>` : `Licence holder<small>not set yet</small>`}</span><i>change</i></button>
       ${S.exported ? `<div class="done-note">Exported at ${esc(S.exported)}</div>` : ""}
       <div class="stats"><div><b>${checked.length}</b>boxes checked</div><div><b style="color:var(--dorm)">${nMice}</b>dormice</div><div><b>${repairs.length}</b>repairs</div></div>
       ${waiting.length ? `<div><h2>Queued but never checked</h2><ul class="list">${li(waiting, l => `Box ${esc(l)}`, "red")}</ul></div>` : ""}
-      <div><h2>Dormice</h2><ul class="list">${li(dorms, ([l, r]) => `<b>${esc(l)}</b>, ${r.time}: ` + r.mice.map(x => [x.Sex, x.Weight, x.Status, x.Breeding, x.Age].filter(Boolean).join(", ") || "no details").map(esc).join(" · "))}</ul></div>
+      <div><h2>Dormice</h2><ul class="list">${li(dorms, ([l, r]) => `<b>${esc(l)}</b>, ${r.time}: ` + r.mice.map(x => [x.Sex, x.Weight, x.Status, x.Breeding, x.Age, x.Handler && "by " + x.Handler].filter(Boolean).join(", ") || "no details").map(esc).join(" · "))}</ul></div>
+      ${handled.length ? `<div><h2>Handled today</h2><ul class="list">${li(handled, ([n, k]) => `${esc(n)}: <b>${k}</b> ${k === 1 ? "dormouse" : "dormice"}`)}</ul></div>` : ""}
       <div><h2>Other finds</h2><ul class="list">${li(other, ([l, r]) => `${esc(l)}: ${esc(r.what)}`)}</ul></div>
       <div><h2>Repairs needed</h2><ul class="list">${li(repairs, l => `Box ${esc(l)}: ${esc(repLabel(S.repair[l]).toLowerCase())}`)}</ul></div>
       <div><h2>Next time</h2><ul class="list">${li([...dorms.map(([l]) => `${l}: dormice, go gently`), ...other.filter(([, r]) => r.what === "Bees").map(([l]) => `${l}: bees`), ...repairs.map(l => `${l}: ${repLabel(S.repair[l]).toLowerCase()}, take tools`)], esc)}</ul></div>
     </div>
     <div class="bar"><button class="btn go" style="flex:2;padding:16px" id="exp">Export CSV</button><button class="btn" style="flex:1" id="newday">New day</button></div>`;
   document.getElementById("back").onclick = grid;
-  document.getElementById("holder").oninput = e => { S.holder = e.target.value; save(); };
-  document.getElementById("assistants").oninput = e => { S.assistants = e.target.value; save(); };
+  document.getElementById("who").onclick = () => teamView(summary);
   document.getElementById("exp").onclick = exportView;
   armNewDay(document.getElementById("newday"));
 }
@@ -693,7 +781,7 @@ function summary() {
 function armNewDay(btn) {
   let armed = false;
   btn.onclick = () => {
-    if (!hasData() || armed) { wipe(); coupes(); toast("New day started"); return; }
+    if (!hasData() || armed) { wipe(); teamView(coupes); toast("New day started"); return; }
     armed = true;
     btn.classList.add("warn");
     btn.textContent = S.exported ? "Tap again" : "Not exported! Tap again to delete";
@@ -704,7 +792,7 @@ function armNewDay(btn) {
 // ---- Export: one row per box, or per dormouse, in NDMP sheet order. ------------------------
 // Column names = the WildlifeChecks fields in ArcGIS, so Append maps every column by itself.
 const COLS = ["site", "check_date", "coupe", "licence_holder", "assistants", "start_time", "end_time", "box_ref", "box_time", "occupied", "contents",
-  "dm_nest", "dm_count", "dormouse_no", "sex", "weight_g", "status", "breeding", "age", "mouse_id", "box_condition", "notes"];
+  "dm_nest", "dm_count", "dormouse_no", "handled_by", "sex", "weight_g", "status", "breeding", "age", "mouse_id", "box_condition", "notes"];
 const CODE = {
   Sex: { Male: "M", Female: "F", Unknown: "U" },
   Status: { Torpid: "T", Active: "A", Dead: "D" },
@@ -728,7 +816,7 @@ function rows(end) {
       notes: r.bulk ? "not marked, recorded empty at finish (positive recording)" : "" });
     else if (r.state === "other") out.push({ ...base, occupied: "yes", contents: r.what, dm_nest: r.what === "Dormouse nest" ? 1 : 0, dm_count: 0 });
     else r.mice.forEach((m, i) => out.push({ ...base, occupied: "yes", contents: "Dormouse", dm_nest: 1, dm_count: r.mice.length,
-      dormouse_no: i + 1, sex: CODE.Sex[m.Sex] || "", weight_g: (m.Weight || "").replace(" g", ""), status: CODE.Status[m.Status] || "",
+      dormouse_no: i + 1, handled_by: m.Handler || "", sex: CODE.Sex[m.Sex] || "", weight_g: (m.Weight || "").replace(" g", ""), status: CODE.Status[m.Status] || "",
       breeding: CODE.Breeding[m.Breeding] || "", age: CODE.Age[m.Age] || "" }));
   }
   return out;
@@ -789,7 +877,8 @@ function start() {
   const d = d0;
   if (d && (Object.keys(d.rec || {}).length || Object.values(d.repair || {}).some(Boolean))) {
     Object.assign(S, { site: d.site || S.site, coupe: BOXES[d.coupe] ? d.coupe : S.coupe, rec: d.rec || {}, repair: d.repair || {}, finished: d.finished || {}, started: d.started || null,
-      date: d.date || null, holder: d.holder || "", assistants: d.assistants || "", exported: d.exported || null });
+      date: d.date || null, holder: d.holder || "", assistants: d.assistants || "", exported: d.exported || null,
+      team: d.team || (d.assistants || "").split(",").map(x => x.trim()).filter(Boolean), teamSet: true, lastHandler: d.lastHandler || "" });
     if (d.surveyors && !d.holder) {  // a day saved before the split: first name is the licence holder
       const names = d.surveyors.split(",").map(x => x.trim()).filter(Boolean);
       S.holder = names[0] || ""; S.assistants = names.slice(1).join(", ");
@@ -811,7 +900,12 @@ function start() {
     }
     coupes(); toast(`Carried on: ${Object.keys(S.rec).length} boxes already done`); return;
   }
-  coupes();
+  // Nothing recorded yet. If today's team was already picked, keep it; otherwise ask first.
+  if (d && d.teamSet && d.date === today()) {
+    Object.assign(S, { holder: d.holder || "", team: d.team || [], assistants: d.assistants || "", teamSet: true, lastHandler: d.lastHandler || "", date: d.date });
+    return coupes();
+  }
+  teamView(coupes);
 }
 start();
 // Keep the screen on while the app is open (Safari 16.4+; in a Home Screen app from iOS 18.4).
