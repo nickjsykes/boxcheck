@@ -3,6 +3,8 @@
 A phone app for dormouse box checks: pick a coupe, tap a box, answer with big buttons. Built for
 gloves, rain and people shouting box numbers.
 
+<p align="center"><img src="docs/boxcheck-team.jpg" width="260" alt="Box Check: pick who is out today"> <img src="docs/boxcheck-coupes.jpg" width="260" alt="Box Check: coupes with boxes checked so far"></p>
+
 - **Works offline** once opened (add it to the Home Screen).
 - **Saves every tap on the phone**, including a half-filled dormouse, and warns if a day was never exported.
 - **Exports the day as a CSV**, one row per box or per dormouse in NDMP sheet order, through the phone's
