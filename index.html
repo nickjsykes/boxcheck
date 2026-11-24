@@ -758,7 +758,7 @@ function card() {
   app.innerHTML = head("Cancel") + `<div class="q" style="font-size:22px">Dormouse ${cur + 1}${mice.length > 1 ? ` of ${mice.length}` : ""}</div><div class="rows">` +
     (hs.length ? `<button class="row cell" id="hand">Handled by<b>${esc(handsOf(m).join(", ") || "tap")}</b></button>` : "") +
     `<div class="grid2">${cell(0)}${cell(1)}${cell(2)}${cell(3)}${cell(4)}<button class="row cell unk" id="unk">All unknown</button></div>` +
-    `<label class="notes" for="mnotes">Notes<textarea id="mnotes" rows="3" placeholder="Anything else about this dormouse">${esc(m.Notes || "")}</textarea></label>` +
+    `<label class="notes" for="mnotes"><textarea id="mnotes" rows="3" placeholder="Notes" aria-label="Notes">${esc(m.Notes || "")}</textarea></label>` +
     (mice.length > 1 ? `<div class="foot" style="justify-content:center;gap:6px">` + mice.map((_, i) => `<button class="btn${i === cur ? " go" : ""}" data-m="${i}">${i + 1}</button>`).join("") + `</div>` : "") +
     `</div><div class="bar"><button class="btn" style="flex:1;padding:16px" id="add">+ Another dormouse</button><button class="btn go" style="flex:1;padding:16px" id="done">Box done</button></div>`;
   wireHead(call);
