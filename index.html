@@ -157,10 +157,18 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--amber); ou
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { border: 2px solid var(--line); background: var(--card); border-radius: 999px; padding: 12px 18px; font: 700 18px var(--sans); }
 .chip.on { background: var(--green); border-color: var(--green); color: var(--on-solid); }
+.chip.big { padding: 18px 24px; font-size: 22px; }
 .chip .x { margin-left: 8px; color: var(--danger); font-weight: 800; }
 .addname { display: flex; gap: 8px; }
 .addname input { flex: 1; min-width: 0; font: 600 18px var(--sans); padding: 10px 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--ink); }
 .btn:disabled { opacity: .5; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.row.cell { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 10px 14px; font-size: 16px; min-width: 0; }
+.row.cell b, .row.cell i { font-size: 20px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row.unk { align-items: center; justify-content: center; color: var(--muted); border-style: dashed; }
+.notes { flex: 1; display: flex; flex-direction: column; gap: 4px; min-height: 96px; font-size: 13px; color: var(--muted); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.notes textarea { flex: 1; min-height: 70px; resize: none; font: 500 18px var(--sans); letter-spacing: 0; text-transform: none; padding: 10px 12px; border-radius: 14px; border: 2px solid var(--line); background: var(--card); color: var(--ink); }
+.notes textarea:focus-visible { outline: 3px solid var(--amber); outline-offset: 1px; }
 .row small { display: block; font-size: 15px; font-weight: 500; color: var(--muted); margin-top: 3px; }
 </style>
 <div id="app"></div>
@@ -204,7 +212,7 @@ const BREED = {
   Unknown: [["Non-breeding", C.spruce], ["Unknown", C.grey]]
 };
 
-const S = { site: "roudsea", coupe: "K", rec: {}, repair: {}, finished: {}, started: null, date: null, holder: "", assistants: "", team: [], teamSet: false, lastHandler: "", exported: null };
+const S = { site: "roudsea", coupe: "K", rec: {}, repair: {}, finished: {}, started: null, date: null, holder: "", assistants: "", team: [], teamSet: false, lastHandler: "", lastHandlers: [], exported: null };
 let box = null, mice = [], cur = 0, undoFn = null, toastT = null, inCard = false;
 const app = document.getElementById("app");
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -224,7 +232,7 @@ function load() {
 }
 function wipe() {
   try { localStorage.removeItem(KEY); } catch (e) {}
-  Object.assign(S, { rec: {}, repair: {}, finished: {}, started: null, date: null, holder: "", assistants: "", team: [], teamSet: false, lastHandler: "", exported: null });
+  Object.assign(S, { rec: {}, repair: {}, finished: {}, started: null, date: null, holder: "", assistants: "", team: [], teamSet: false, lastHandler: "", lastHandlers: [], exported: null });
   box = null; mice = []; cur = 0; inCard = false;
 }
 const hasData = () => Object.keys(S.rec).length > 0 || Object.values(S.repair).some(Boolean);
@@ -247,7 +255,11 @@ function addName(p, raw) {
   return n;
 }
 const handlers = () => [S.holder, ...S.team].filter(Boolean);
-const defaultHandler = () => handlers().includes(S.lastHandler) ? S.lastHandler : S.holder;
+const handsOf = m => m.Handlers || (m.Handler ? [m.Handler] : []);
+const defaultHandlers = () => {
+  const hs = handlers(), last = (S.lastHandlers || (S.lastHandler ? [S.lastHandler] : [])).filter(n => hs.includes(n));
+  return last.length ? last : S.holder ? [S.holder] : [];
+};
 function teamView(then) {
   stopLocating();
   const p = people();
@@ -302,6 +314,40 @@ function teamView(then) {
   draw();
 }
 
+// ---- Last time: each box's result from the last EXPORTED check, kept on this phone only. -------
+// Only exported days count, so an abandoned day can't leave phantom bees. Never in this file: it's public.
+const HIST_KEY = "boxcheck.history.v1";
+function history() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || "null") || {}; } catch (e) { return {}; } }
+function lastFor(site) {
+  const h = history()[site] || {}, out = {}, day = S.date || today();
+  for (const [l, e] of Object.entries(h)) if (e.date !== day) out[l] = e;   // today's own check isn't "last time"
+  return out;
+}
+function mouseText(m) {
+  return [m.Sex, m.Status, m.Breeding].filter(v => v && v !== "Unknown").map(v => v.toLowerCase()).join(", ");
+}
+function recordHistory() {
+  const all = history(), h = all[S.site] = all[S.site] || {}, date = S.date || today();
+  const when = new Date(date + "T12:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const labels = new Set([...Object.keys(S.rec), ...Object.keys(S.repair).filter(l => S.repair[l])]);
+  for (const l of labels) {
+    const r = S.rec[l];
+    if (r && r.state === "wait") continue;                      // queued, never checked: nothing learned
+    let tag = "", text = "Empty", bees = false;
+    if (!r) text = "Not checked";
+    else if (r.state === "dorm") {
+      const n = r.mice.length, d = r.mice.map(mouseText).filter(Boolean);
+      tag = `${n} dorm`; text = `${n} ${n === 1 ? "dormouse" : "dormice"}` + (d.length ? ", " + d.join("; ") : "");
+    } else if (r.state === "other") {
+      bees = r.what === "Bees"; tag = bees ? "BEES" : SHORT[r.what] || r.what; text = bees ? "Bees / wasps" : r.what;
+    }
+    if (S.repair[l]) { text += `. Needed repair: ${repLabel(S.repair[l]).toLowerCase()}`; tag = tag || "Repair"; }
+    if (!r && h[l]) { h[l].text += `. Needed repair (${when}): ${repLabel(S.repair[l]).toLowerCase()}`; continue; }
+    h[l] = { tag, text, bees, when, date };
+  }
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(all)); } catch (e) {}
+}
+
 // ---- The box list: loaded once from a CSV (box, coupe) and kept on the phone. -------------
 const BOXES_KEY = "boxcheck.boxes.v1";
 const countBoxes = b => Object.values(b).reduce((n, v) => n + v.length, 0);
@@ -314,7 +360,7 @@ function boxesFor(site) {
 function useBoxes() {
   const st = storedBoxes(), b = boxesFor(S.site);
   BOXES = b || {}; EXAMPLE = !!(st && st.example && b === st.boxes);
-  LAST = EXAMPLE ? EXAMPLE_LAST : {};
+  LAST = EXAMPLE ? EXAMPLE_LAST : lastFor(S.site);
   if (!BOXES[S.coupe]) S.coupe = Object.keys(BOXES)[0] || null;
 }
 const reserveName = id => (RESERVES.find(r => r.id === id) || {}).name || id;
@@ -588,7 +634,7 @@ function grid() {
     const r = S.rec[l], lt = LAST[l];
     const cls = (r ? (r.state === "wait" ? "hold" : "done") : "") + (S.repair[l] ? " fix" : "");
     const today = !r || r.state === "clear" ? "" : r.state === "wait" ? "Queued" : r.state === "dorm" ? `${r.mice.length} dorm` : SHORT[r.what] || r.what;
-    const top = lt ? `<span class="s was${lt.bees ? " bee" : ""}">${esc(lt.tag)}</span>` : `<span class="s blank">&nbsp;</span>`;
+    const top = lt && lt.tag ? `<span class="s was${lt.bees ? " bee" : ""}">${esc(lt.tag)}</span>` : `<span class="s blank">&nbsp;</span>`;
     const bot = today ? `<span class="s now">${esc(today)}</span>` : `<span class="s blank">&nbsp;</span>`;
     h += `<button class="t ${cls}${/[a-e]$/.test(l) ? " sfx" : ""}" data-b="${esc(l)}" aria-label="Box ${esc(l)}">` +
       top + `<span class="n${short(l).length >= 4 ? " d4" : short(l).length === 3 ? " d3" : ""}">${esc(short(l))}</span>` + bot + `</button>`;
@@ -661,7 +707,7 @@ function head(backLabel) {
   return `<div class="head"><h1>Box ${esc(short(box))}</h1>` +
     `<button class="rep${S.repair[box] ? " on" : ""}" id="rep">${S.repair[box] ? "Repair: " + esc(repLabel(S.repair[box])) : "Needs repair"}</button>` +
     `<button class="btn" id="back">${backLabel || "Back"}</button></div>` +
-    (lt ? `<div class="last">Last time: ${esc(lt.text)}<em>${esc(lt.when)} check · example</em></div>` : "");
+    (lt ? `<div class="last">Last time: ${esc(lt.text)}<em>${esc(lt.when)} check${EXAMPLE ? " · example" : ""}</em></div>` : "");
 }
 function wireHead(back) {
   document.getElementById("rep").onclick = repairMenu;
@@ -707,19 +753,46 @@ function nest() {
 function card() {
   inCard = true; save(); screen = card;      // a half-filled dormouse survives a flat battery too
   const m = mice[cur], hs = handlers();
-  if (!m.Handler && hs.length) m.Handler = defaultHandler();
+  if (!m.Handlers && hs.length) { m.Handlers = m.Handler ? [m.Handler] : defaultHandlers(); delete m.Handler; }
+  const cell = (i) => { const f = FIELDS[i]; return `<button class="row cell" data-f="${i}">${f.name}${m[f.name] ? `<b>${esc(m[f.name])}</b>` : `<i>tap</i>`}</button>`; };
   app.innerHTML = head("Cancel") + `<div class="q" style="font-size:22px">Dormouse ${cur + 1}${mice.length > 1 ? ` of ${mice.length}` : ""}</div><div class="rows">` +
-    (hs.length ? `<button class="row" id="hand">Handled by<b>${esc(m.Handler || "")}</b></button>` : "") +
-    FIELDS.map((f, i) => `<button class="row" data-f="${i}">${f.name}${m[f.name] ? `<b>${esc(m[f.name])}</b>` : `<i>tap</i>`}</button>`).join("") +
+    (hs.length ? `<button class="row cell" id="hand">Handled by<b>${esc(handsOf(m).join(", ") || "tap")}</b></button>` : "") +
+    `<div class="grid2">${cell(0)}${cell(1)}${cell(2)}${cell(3)}${cell(4)}<button class="row cell unk" id="unk">All unknown</button></div>` +
+    `<label class="notes" for="mnotes">Notes<textarea id="mnotes" rows="3" placeholder="Anything else about this dormouse">${esc(m.Notes || "")}</textarea></label>` +
     (mice.length > 1 ? `<div class="foot" style="justify-content:center;gap:6px">` + mice.map((_, i) => `<button class="btn${i === cur ? " go" : ""}" data-m="${i}">${i + 1}</button>`).join("") + `</div>` : "") +
     `</div><div class="bar"><button class="btn" style="flex:1;padding:16px" id="add">+ Another dormouse</button><button class="btn go" style="flex:1;padding:16px" id="done">Box done</button></div>`;
   wireHead(call);
   app.querySelectorAll("[data-f]").forEach(b => b.onclick = () => field(FIELDS[+b.dataset.f]));
   const hb = document.getElementById("hand");
-  if (hb) hb.onclick = () => ask("Who's handling?", hs.map(n => [n, n === S.holder ? C.spruce : C.slate, () => { m.Handler = n; S.lastHandler = n; card(); }]), card);
+  if (hb) hb.onclick = () => handView(m);
+  document.getElementById("unk").onclick = () => {
+    Object.assign(m, { Sex: "Unknown", Weight: "", Status: "Unknown", Breeding: "Unknown", Age: "Unknown" });
+    if (!(m.Notes || "").trim()) m.Notes = "Escaped before details taken";
+    card();
+  };
+  document.getElementById("mnotes").oninput = e => { m.Notes = e.target.value; save(); };
   app.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { cur = +b.dataset.m; card(); });
   document.getElementById("add").onclick = () => { mice.push({}); cur = mice.length - 1; card(); };
   document.getElementById("done").onclick = () => setRec(box, { state: "dorm", mice: mice.map(x => ({ ...x })) }, `${short(box)}: ${mice.length} ${mice.length === 1 ? "dormouse" : "dormice"} saved`);
+}
+// Who handled this dormouse: tick everyone who did. The next dormouse starts with the same people.
+function handView(m) {
+  const hs = handlers(), on = new Set(handsOf(m));
+  const draw = () => {
+    screen = draw;
+    app.innerHTML = head() + `<div class="q">Who handled it?</div><div class="sum"><div class="chips">` +
+      hs.map(n => `<button class="chip big${on.has(n) ? " on" : ""}" data-n="${esc(n)}">${esc(n)}</button>`).join("") +
+      `</div><div style="color:var(--muted);font-size:15px">Tick everyone who handled it. Each of them gets it counted.</div></div>` +
+      `<button class="btn go" style="padding:18px;font-size:20px" id="hok"${on.size ? "" : " disabled"}>${on.size ? "Done" : "Pick at least one"}</button>`;
+    wireHead(card);
+    app.querySelectorAll("[data-n]").forEach(b => b.onclick = () => { const n = b.dataset.n; on.has(n) ? on.delete(n) : on.add(n); draw(); });
+    document.getElementById("hok").onclick = () => {
+      if (!on.size) return;
+      m.Handlers = hs.filter(n => on.has(n)); S.lastHandlers = m.Handlers.slice();
+      card();
+    };
+  };
+  draw();
 }
 function field(f) {
   const m = mice[cur];
@@ -754,7 +827,7 @@ function summary() {
   const repairs = Object.keys(S.repair).filter(l => S.repair[l]);
   const other = all.filter(([, r]) => r.state === "other");
   const tally = {};
-  dorms.forEach(([, r]) => r.mice.forEach(x => { if (x.Handler) tally[x.Handler] = (tally[x.Handler] || 0) + 1; }));
+  dorms.forEach(([, r]) => r.mice.forEach(x => handsOf(x).forEach(n => { tally[n] = (tally[n] || 0) + 1; })));
   const handled = Object.entries(tally).sort((a, b) => b[1] - a[1]);
   const li = (arr, f, cls) => arr.length ? arr.map(x => `<li${cls ? ` class="${cls}"` : ""}>${f(x)}</li>`).join("") : `<li>None</li>`;
   app.innerHTML = `<div class="head"><h1 style="font-size:26px">Day summary</h1><button class="btn" id="back">Back</button></div>
@@ -764,7 +837,7 @@ function summary() {
       ${S.exported ? `<div class="done-note">Exported at ${esc(S.exported)}</div>` : ""}
       <div class="stats"><div><b>${checked.length}</b>boxes checked</div><div><b style="color:var(--dorm)">${nMice}</b>dormice</div><div><b>${repairs.length}</b>repairs</div></div>
       ${waiting.length ? `<div><h2>Queued but never checked</h2><ul class="list">${li(waiting, l => `Box ${esc(l)}`, "red")}</ul></div>` : ""}
-      <div><h2>Dormice</h2><ul class="list">${li(dorms, ([l, r]) => `<b>${esc(l)}</b>, ${r.time}: ` + r.mice.map(x => [x.Sex, x.Weight, x.Status, x.Breeding, x.Age, x.Handler && "by " + x.Handler].filter(Boolean).join(", ") || "no details").map(esc).join(" · "))}</ul></div>
+      <div><h2>Dormice</h2><ul class="list">${li(dorms, ([l, r]) => `<b>${esc(l)}</b>, ${r.time}: ` + r.mice.map(x => { const d = [x.Sex, x.Weight, x.Status, x.Breeding, x.Age].filter(v => v && v !== "Unknown"); return [...(d.length ? d : [x.Sex ? "details unknown" : ""]), handsOf(x).length && "by " + handsOf(x).join(" & "), x.Notes].filter(Boolean).join(", ") || "no details"; }).map(esc).join(" · "))}</ul></div>
       ${handled.length ? `<div><h2>Handled today</h2><ul class="list">${li(handled, ([n, k]) => `${esc(n)}: <b>${k}</b> ${k === 1 ? "dormouse" : "dormice"}`)}</ul></div>` : ""}
       <div><h2>Other finds</h2><ul class="list">${li(other, ([l, r]) => `${esc(l)}: ${esc(r.what)}`)}</ul></div>
       <div><h2>Repairs needed</h2><ul class="list">${li(repairs, l => `Box ${esc(l)}: ${esc(repLabel(S.repair[l]).toLowerCase())}`)}</ul></div>
@@ -781,7 +854,7 @@ function summary() {
 function armNewDay(btn) {
   let armed = false;
   btn.onclick = () => {
-    if (!hasData() || armed) { wipe(); teamView(coupes); toast("New day started"); return; }
+    if (!hasData() || armed) { wipe(); useBoxes(); teamView(coupes); toast("New day started"); return; }
     armed = true;
     btn.classList.add("warn");
     btn.textContent = S.exported ? "Tap again" : "Not exported! Tap again to delete";
@@ -816,8 +889,8 @@ function rows(end) {
       notes: r.bulk ? "not marked, recorded empty at finish (positive recording)" : "" });
     else if (r.state === "other") out.push({ ...base, occupied: "yes", contents: r.what, dm_nest: r.what === "Dormouse nest" ? 1 : 0, dm_count: 0 });
     else r.mice.forEach((m, i) => out.push({ ...base, occupied: "yes", contents: "Dormouse", dm_nest: 1, dm_count: r.mice.length,
-      dormouse_no: i + 1, handled_by: m.Handler || "", sex: CODE.Sex[m.Sex] || "", weight_g: (m.Weight || "").replace(" g", ""), status: CODE.Status[m.Status] || "",
-      breeding: CODE.Breeding[m.Breeding] || "", age: CODE.Age[m.Age] || "" }));
+      dormouse_no: i + 1, handled_by: handsOf(m).join(", "), sex: CODE.Sex[m.Sex] || "", weight_g: (m.Weight || "").replace(" g", ""), status: CODE.Status[m.Status] || "",
+      breeding: CODE.Breeding[m.Breeding] || "", age: CODE.Age[m.Age] || "", notes: (m.Notes || "").trim() }));
   }
   return out;
 }
@@ -832,7 +905,7 @@ function exportView() {
   const name = `${S.date || today()}_${S.site}_dormouse-boxes_${coupes}.csv`;
   const file = new File([csv], name, { type: "text/csv" });
   const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
-  const done = how => { S.exported = `${now()} (${how})`; save(); summary(); toast("Exported. Keep the file safe until it's on the map"); };
+  const done = how => { S.exported = `${now()} (${how})`; save(); if (!EXAMPLE) recordHistory(); summary(); toast("Exported. Keep the file safe until it's on the map"); };
   app.innerHTML = `<div class="head"><h1 style="font-size:26px">Export</h1><button class="btn" id="back">Back</button></div>
     <div class="sum">
       <div style="font-size:15px"><b>${rs.length}</b> rows · ${esc(name)}</div>
@@ -878,13 +951,13 @@ function start() {
   if (d && (Object.keys(d.rec || {}).length || Object.values(d.repair || {}).some(Boolean))) {
     Object.assign(S, { site: d.site || S.site, coupe: BOXES[d.coupe] ? d.coupe : S.coupe, rec: d.rec || {}, repair: d.repair || {}, finished: d.finished || {}, started: d.started || null,
       date: d.date || null, holder: d.holder || "", assistants: d.assistants || "", exported: d.exported || null,
-      team: d.team || (d.assistants || "").split(",").map(x => x.trim()).filter(Boolean), teamSet: true, lastHandler: d.lastHandler || "" });
+      team: d.team || (d.assistants || "").split(",").map(x => x.trim()).filter(Boolean), teamSet: true, lastHandler: d.lastHandler || "", lastHandlers: d.lastHandlers || [] });
     if (d.surveyors && !d.holder) {  // a day saved before the split: first name is the licence holder
       const names = d.surveyors.split(",").map(x => x.trim()).filter(Boolean);
       S.holder = names[0] || ""; S.assistants = names.slice(1).join(", ");
     }
     if (S.date && S.date !== today()) {
-      if (S.exported) { wipe(); coupes(); return; }
+      if (S.exported) { wipe(); useBoxes(); teamView(coupes); return; }
       const n = Object.keys(S.rec).length;
       app.innerHTML = `<div class="head"><h1 style="font-size:26px">Unexported check</h1></div>
         <div class="sum"><div style="font-size:18px;font-weight:600">${esc(nice(S.date))}: ${n} box${n === 1 ? "" : "es"} recorded, never exported.</div>
@@ -902,7 +975,7 @@ function start() {
   }
   // Nothing recorded yet. If today's team was already picked, keep it; otherwise ask first.
   if (d && d.teamSet && d.date === today()) {
-    Object.assign(S, { holder: d.holder || "", team: d.team || [], assistants: d.assistants || "", teamSet: true, lastHandler: d.lastHandler || "", date: d.date });
+    Object.assign(S, { holder: d.holder || "", team: d.team || [], assistants: d.assistants || "", teamSet: true, lastHandler: d.lastHandler || "", lastHandlers: d.lastHandlers || [], date: d.date });
     return coupes();
   }
   teamView(coupes);
